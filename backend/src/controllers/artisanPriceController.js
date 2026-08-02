@@ -1,8 +1,9 @@
 const ArtisanPrice = require('../models/ArtisanPrice');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
-  if (req.query.location) filter.location = new RegExp(req.query.location, 'i');
+  if (req.query.location) filter.location = new RegExp(escapeRegex(req.query.location), 'i');
 
   const prices = await ArtisanPrice.find(filter)
     .populate('createdBy', 'name')
