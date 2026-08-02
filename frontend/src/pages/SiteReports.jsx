@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Plus, X, Pencil, Trash2, Search, FileText, Printer, ChevronDown, ChevronUp,
   AlertTriangle, CheckCircle, Clock, Camera, MapPin, Users, CloudSun, Tag, UserCheck,
-  Package, ClipboardList, Zap,
+  Package, ClipboardList, Zap, Sparkles, Copy, Check,
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -830,6 +830,118 @@ function PrintableReport({ report }) {
   );
 }
 
+function SummaryPanel({ open, onClose, projects, initialProjectId }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const [projectId, setProjectId] = useState(initialProjectId || '');
+  const [startDate, setStartDate] = useState(weekAgoStr);
+  const [endDate, setEndDate] = useState(todayStr);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setProjectId(initialProjectId || '');
+    setStartDate(weekAgoStr);
+    setEndDate(todayStr);
+    setResult(null);
+    setError('');
+    setCopied(false);
+  }, [open, initialProjectId]);
+
+  const generate = async () => {
+    if (!projectId) { setError('Choose a project first.'); return; }
+    setLoading(true); setError(''); setResult(null);
+    try {
+      const { data } = await api.post('/site-reports/summarize', { projectId, startDate, endDate });
+      setResult(data);
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Failed to generate summary');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = () => {
+    if (!result?.summary) return;
+    navigator.clipboard.writeText(result.summary);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl my-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Sparkles size={17} className="text-primary-900" /> Client Update Summary</h2>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-600" /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Project</label>
+            <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+              <option value="">— Choose a project —</option>
+              {projects.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+
+          <button onClick={generate} disabled={loading}
+            className="w-full flex items-center justify-center gap-2 bg-primary-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-800 disabled:opacity-60">
+            <Sparkles size={15} /> {loading ? 'Generating…' : 'Generate Summary'}
+          </button>
+
+          {result && (
+            <div className="space-y-2">
+              {result.reportCount === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">No site reports were logged in this date range for this project.</p>
+              ) : (
+                <>
+                  {!result.configured && (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      AI summary generation isn't configured for this account — showing a plain summary of what was logged instead.
+                    </p>
+                  )}
+                  {result.configured && result.aiFailed && (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      AI summary generation failed — showing a plain summary of what was logged instead.
+                    </p>
+                  )}
+                  <textarea readOnly value={result.summary} rows={6}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 resize-none" />
+                  <button onClick={copy}
+                    className="flex items-center gap-1.5 text-sm text-primary-900 hover:underline">
+                    {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy to clipboard</>}
+                  </button>
+                  <p className="text-xs text-gray-400">Based on {result.reportCount} report{result.reportCount !== 1 ? 's' : ''} — review before sending to the client.</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SiteReports() {
   const { user } = useAuth();
   const [reports, setReports] = useState([]);
@@ -839,6 +951,7 @@ export default function SiteReports() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [printing, setPrinting] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [templateFilter, setTemplateFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
@@ -918,6 +1031,10 @@ export default function SiteReports() {
               columns={SITE_REPORT_IMPORT_COLUMNS}
               templateName="site-reports"
             />
+            <button onClick={() => setSummaryOpen(true)}
+              className="flex items-center gap-2 border border-primary-900 text-primary-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-50 shrink-0">
+              <Sparkles size={16} /> Client Update
+            </button>
             <button onClick={() => { setEditing(null); setModal(true); }}
               className="flex items-center gap-2 bg-primary-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-800 shrink-0">
               <Plus size={16} /> New Report
@@ -994,6 +1111,12 @@ export default function SiteReports() {
         editing={editing}
         projects={projects}
         teamMembers={teamMembers}
+      />
+      <SummaryPanel
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        projects={projects}
+        initialProjectId={projectFilter}
       />
       <style>{`@media print { .print\\:hidden { display:none!important; } .print\\:block { display:block!important; } }`}</style>
     </div>

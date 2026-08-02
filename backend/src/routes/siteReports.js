@@ -5,6 +5,7 @@ const SiteReport = require('../models/SiteReport');
 const Project = require('../models/Project');
 const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
 const { createNotification } = require('../controllers/notificationController');
+const { summarizeReports } = require('../utils/siteReportSummarizer');
 
 async function notifyClientOfShare(projectId, { title, message, link }) {
   if (!projectId) return;
@@ -53,6 +54,39 @@ router.get('/:id', async (req, res) => {
   }
 
   res.json({ report });
+});
+
+// Condenses site reports for a project (default: last 7 days) into a
+// single client-friendly paragraph. Staff-only drafting tool — the client
+// never triggers this themselves.
+router.post('/summarize', canWrite, async (req, res) => {
+  const { projectId, startDate, endDate } = req.body;
+  if (!projectId) return res.status(400).json({ message: 'projectId is required' });
+
+  const end = endDate ? new Date(endDate) : new Date();
+  const start = startDate ? new Date(startDate) : new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const allowedIds = await getAllowedProjectIds(req.user);
+  if (allowedIds !== null && !allowedIds.includes(String(projectId))) {
+    return res.status(404).json({ message: 'Project not found' });
+  }
+
+  const [reports, project] = await Promise.all([
+    SiteReport.find({
+      companyId: req.user.companyId,
+      projectId,
+      reportDate: { $gte: start, $lte: end },
+    }).sort({ reportDate: 1 }),
+    Project.findOne({ _id: projectId, companyId: req.user.companyId }).select('name'),
+  ]);
+
+  const result = await summarizeReports(reports, {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: process.env.ANTHROPIC_MODEL,
+    projectName: project?.name,
+  });
+
+  res.json({ ...result, reportCount: reports.length, dateRange: { start, end } });
 });
 
 router.post('/', canWrite, async (req, res) => {
