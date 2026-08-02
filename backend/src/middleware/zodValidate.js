@@ -84,6 +84,116 @@ const invoiceSchema = z.object({
   notes:        z.string().max(2000).optional(),
 }).passthrough();
 
+// ── BOQ versions / items ──────────────────────────────────────────────────────
+
+const boqVersionSchema = z.object({
+  name:        z.string().trim().min(1, 'Name is required').max(200),
+  description: z.string().max(2000).optional(),
+  status:      z.enum(['draft', 'final', 'approved']).optional(),
+  currency:    z.string().max(10).optional(),
+});
+const boqVersionUpdateSchema = boqVersionSchema.partial();
+
+const boqItemOptionSchema = z.object({
+  tier:     z.enum(['basic', 'standard', 'premium']).optional(),
+  label:    z.string().max(200).optional(),
+  baseCost: z.coerce.number().min(0).optional(),
+});
+const boqItemSchema = z.object({
+  item:            z.string().trim().min(1, 'Item name is required').max(300),
+  description:     z.string().max(2000).optional(),
+  unit:            z.string().trim().min(1, 'Unit is required').max(50),
+  quantity:        z.coerce.number().min(0, 'Quantity must be non-negative'),
+  baseCost:        z.coerce.number().min(0, 'Base cost must be non-negative'),
+  overheadPercent: z.coerce.number().min(0).max(1000).optional(),
+  profitPercent:   z.coerce.number().min(0).max(1000).optional(),
+  options:         z.array(boqItemOptionSchema).max(10).optional(),
+});
+const boqItemUpdateSchema = boqItemSchema.partial();
+
+// ── Change orders ──────────────────────────────────────────────────────────────
+
+const changeOrderSchema = z.object({
+  projectId:    z.string().min(1, 'projectId is required'),
+  boqVersionId: z.string().optional(),
+  title:        z.string().trim().min(1, 'Title is required').max(300),
+  description:  z.string().max(2000).optional(),
+  reason:       z.string().max(2000).optional(),
+  originalCost: z.coerce.number().min(0, 'Original cost must be non-negative'),
+  newCost:      z.coerce.number().min(0, 'New cost must be non-negative'),
+});
+const changeOrderUpdateSchema = z.object({
+  title:        z.string().trim().min(1).max(300).optional(),
+  description:  z.string().max(2000).optional(),
+  reason:       z.string().max(2000).optional(),
+  originalCost: z.coerce.number().min(0).optional(),
+  newCost:      z.coerce.number().min(0).optional(),
+});
+
+// ── Programme / weekly reports ──────────────────────────────────────────────────
+
+const programmeActivitySchema = z.object({
+  name:            z.string().trim().min(1).max(200),
+  startWeek:       z.coerce.number().min(0).optional(),
+  durationWeeks:   z.coerce.number().min(1).optional(),
+  percentComplete: z.coerce.number().min(0).max(100).optional(),
+});
+const programmePhaseSchema = z.object({
+  name:       z.string().trim().min(1).max(200),
+  color:      z.string().max(20).optional(),
+  activities: z.array(programmeActivitySchema).max(200).optional(),
+});
+const programmeCreateSchema = z.object({
+  projectId: z.string().optional(),
+  name:      z.string().max(200).optional(),
+  startDate: z.coerce.date({ message: 'startDate is required' }),
+});
+const programmeUpdateSchema = z.object({
+  name:      z.string().max(200).optional(),
+  startDate: z.coerce.date().optional(),
+  phases:    z.array(programmePhaseSchema).max(50).optional(),
+});
+const weeklyReportSchema = z.object({
+  weekNumber:     z.coerce.number().int().min(0, 'weekNumber is required'),
+  weekEnding:     z.coerce.date().optional(),
+  overallPlanned: z.coerce.number().min(0).max(100).optional(),
+  overallActual:  z.coerce.number().min(0).max(100).optional(),
+  phaseProgress:  z.array(z.object({
+    phase:   z.string().max(200).optional(),
+    planned: z.coerce.number().optional(),
+    actual:  z.coerce.number().optional(),
+  })).max(50).optional(),
+  lookAhead:   z.string().max(2000).optional(),
+  issues:      z.string().max(2000).optional(),
+  signedOffBy: z.string().max(200).optional(),
+});
+
+// ── Expenses ─────────────────────────────────────────────────────────────────────
+
+const EXPENSE_CATEGORIES = [
+  'Labour', 'Materials', 'Equipment', 'Transport', 'Professional Fees',
+  'Permits & Licenses', 'Utilities', 'Office & Admin', 'Safety & PPE', 'Other',
+];
+const expenseSchema = z.object({
+  projectId:   z.string().optional(),
+  category:    z.enum(EXPENSE_CATEGORIES).optional(),
+  description: z.string().trim().min(1, 'Description is required').max(500),
+  amount:      z.coerce.number().min(0, 'Amount must be non-negative'),
+  currency:    z.string().max(10).optional(),
+  date:        z.coerce.date().optional(),
+  vendor:      z.string().max(200).optional(),
+  notes:       z.string().max(2000).optional(),
+});
+const expenseUpdateSchema = expenseSchema.partial();
+
+// ── Estimate calculation ──────────────────────────────────────────────────────
+
+const estimateCalculateSchema = z.object({
+  sizeM2:    z.coerce.number().positive('Size (m²) must be a positive number'),
+  condition: z.enum(['carcass', 'advanced_carcass', 'semi_finished', 'finished']),
+  tier:      z.enum(['basic', 'mid_range', 'premium']),
+});
+
 module.exports = {
   zodValidate,
   schemas: {
@@ -94,5 +204,17 @@ module.exports = {
     estimate: estimateSchema,
     invoice: invoiceSchema,
     waitlist: waitlistSchema,
+    boqVersion: boqVersionSchema,
+    boqVersionUpdate: boqVersionUpdateSchema,
+    boqItem: boqItemSchema,
+    boqItemUpdate: boqItemUpdateSchema,
+    changeOrder: changeOrderSchema,
+    changeOrderUpdate: changeOrderUpdateSchema,
+    programmeCreate: programmeCreateSchema,
+    programmeUpdate: programmeUpdateSchema,
+    weeklyReport: weeklyReportSchema,
+    expense: expenseSchema,
+    expenseUpdate: expenseUpdateSchema,
+    estimateCalculate: estimateCalculateSchema,
   },
 };
