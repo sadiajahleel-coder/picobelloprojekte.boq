@@ -6,6 +6,7 @@ const Project = require('../models/Project');
 const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
 const { createNotification } = require('../controllers/notificationController');
 const { summarizeReports } = require('../utils/siteReportSummarizer');
+const { aiLimiter } = require('../middleware/rateLimiter');
 
 async function notifyClientOfShare(projectId, { title, message, link }) {
   if (!projectId) return;
@@ -59,7 +60,7 @@ router.get('/:id', async (req, res) => {
 // Condenses site reports for a project (default: last 7 days) into a
 // single client-friendly paragraph. Staff-only drafting tool — the client
 // never triggers this themselves.
-router.post('/summarize', canWrite, async (req, res) => {
+router.post('/summarize', canWrite, aiLimiter, async (req, res) => {
   const { projectId, startDate, endDate } = req.body;
   if (!projectId) return res.status(400).json({ message: 'projectId is required' });
 
