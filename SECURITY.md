@@ -189,7 +189,7 @@ Product and defect records that reference the deleted user are intentionally kep
     "employeeId": "EMP001",
     "name": "Jane Smith",
     "email": "jane@example.com",
-    "department": "Warehouse Operations",
+    "department": "Site Operations",
     "about": "...",
     "role": "staff",
     "createdAt": "...",
