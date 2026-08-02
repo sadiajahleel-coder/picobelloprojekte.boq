@@ -17,12 +17,8 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
       - key: JWT_EXPIRES_IN
-        value: 24h
-      - key: JWT_REFRESH_EXPIRES_IN
-        value: 7d
+        value: 30d
       - key: AWS_REGION
         sync: false
       - key: AWS_ACCESS_KEY_ID
@@ -64,8 +60,6 @@ services:
       - key: EMAIL_FROM
         sync: false
       - key: OWNER_EMAIL
-        sync: false
-      - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: UNLOCK_SECRET
         generateValue: true

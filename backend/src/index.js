@@ -9,7 +9,6 @@ const hpp            = require('hpp');
 const connectDB      = require('./config/database');
 const errorHandler   = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
-const { paystackWebhook } = require('./controllers/invoiceController');
 
 const authRoutes               = require('./routes/auth');
 const companyRoutes            = require('./routes/company');
@@ -34,7 +33,6 @@ const commentRoutes       = require('./routes/comments');
 const notificationRoutes  = require('./routes/notifications');
 const expenseRoutes        = require('./routes/expenses');
 const documentRoutes       = require('./routes/documents');
-const paystackRoutes       = require('./routes/paystack');
 const programmeRoutes      = require('./routes/programme');
 const waitlistRoutes       = require('./routes/waitlist');
 
@@ -61,12 +59,6 @@ app.use(cors({
 
 // ── Security headers ─────────────────────────────────────────────────────────────────
 app.use(helmet());
-
-// ── Paystack webhook: must use raw body BEFORE express.json() ─────────────────────────
-// Paystack signs the raw request body; if JSON middleware runs first the sig check fails.
-['/api/paystack/webhook', '/api/v1/paystack/webhook'].forEach((path) => {
-  app.post(path, express.raw({ type: 'application/json' }), paystackWebhook);
-});
 
 // ── Body parsing ───────────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
@@ -114,7 +106,6 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Da
   app.use(`${prefix}/notifications`,       notificationRoutes);
   app.use(`${prefix}/expenses`,            expenseRoutes);
   app.use(`${prefix}/documents`,           documentRoutes);
-  app.use(`${prefix}/paystack`,            paystackRoutes);
   app.use(`${prefix}/programmes`,          programmeRoutes);
   app.use(`${prefix}/waitlist`,            waitlistRoutes);
 });

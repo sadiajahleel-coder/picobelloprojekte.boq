@@ -5,7 +5,7 @@ import {
   CheckCircle, TrendingUp, Shield, Clock, ChevronRight,
   Users, Receipt, BarChart2, GitPullRequest, ClipboardList,
   Package, Zap, FolderOpen, X, Phone, GanttChart,
-  CreditCard, Banknote, BookOpen, Layers, ChevronDown,
+  BookOpen, Layers, ChevronDown,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import axios from 'axios';
@@ -108,7 +108,7 @@ const HOW_IT_WORKS = [
   {
     n: '04',
     title: 'Invoice, Report & Get Paid',
-    desc: 'Issue invoices linked to projects. Share a payment link so clients pay online via Paystack. Run analytics on revenue, costs, and profitability. Download PDFs on your letterhead.',
+    desc: 'Issue invoices linked to projects. Share a link so clients can view the invoice and your bank transfer details. Run analytics on revenue, costs, and profitability. Download PDFs on your letterhead.',
   },
 ];
 
@@ -178,13 +178,7 @@ const FEATURES = [
     icon: Receipt,
     color: 'bg-red-50 text-red-600',
     title: 'Invoices & Expenses',
-    desc: 'Create and track invoices linked to projects. Share a Paystack payment link so clients pay online instantly. Log every project expense and compare against budget.',
-  },
-  {
-    icon: Banknote,
-    color: 'bg-emerald-50 text-emerald-600',
-    title: 'Team Payments',
-    desc: 'Pay site managers, QS, and contractors directly from the app. Add bank account details once, then initiate NGN transfers via Paystack with one click.',
+    desc: 'Create and track invoices linked to projects. Share a link so clients can view the invoice and pay by bank transfer. Log every project expense and compare against budget.',
   },
   {
     icon: BarChart2,
@@ -243,7 +237,7 @@ const FAQS = [
   },
   {
     q: 'How does invoice payment work?',
-    a: 'Create an invoice and share the Paystack payment link directly with your client. They pay online by card or bank transfer. Payment status updates in real time on your Invoices page — no manual chasing needed.',
+    a: 'Create an invoice and share the link directly with your client — it shows your bank transfer details. Record payments as they come in and your Invoices page stays up to date automatically.',
   },
   {
     q: 'How do I build a programme of works?',
@@ -444,7 +438,7 @@ export default function Landing() {
             </Link>
           </div>
           <div className="flex flex-wrap gap-3 sm:gap-6 justify-center mt-8 sm:mt-12 text-blue-300 text-xs sm:text-sm">
-            {['Paystack online payments', 'PDF on letterhead', 'Client approval portal', '7-day free trial'].map(t => (
+            {['Invoicing & payment tracking', 'PDF on letterhead', 'Client approval portal', '7-day free trial'].map(t => (
               <span key={t} className="flex items-center gap-1.5">
                 <CheckCircle size={13} className="text-blue-400" /> {t}
               </span>
@@ -632,7 +626,7 @@ export default function Landing() {
                   'Up to 5 team members',
                   'QS, Artisan & Material rate libraries',
                   'Historical project database',
-                  'Invoices + Paystack payment links',
+                  'Invoices + payment tracking',
                   'Document Library',
                   'Client portal (view & approve)',
                   'PDF downloads on letterhead',
@@ -649,7 +643,6 @@ export default function Landing() {
                   'Change Orders & Site Reports',
                   'Expense Tracker',
                   'Progress Tracker',
-                  'Team Paystack payments',
                   'Priority support',
                 ].map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm text-gray-400 line-through decoration-gray-300">
@@ -691,7 +684,6 @@ export default function Landing() {
                   'Site Reports with photos',
                   'Expense Tracker',
                   'Progress Tracker',
-                  'Team payments via Paystack',
                   'Contacts & CRM',
                   'Unlimited estimate history',
                   'Priority onboarding & support',

@@ -51,8 +51,8 @@ platform-owner only, not customer-facing).
 | Feature | Status | Introduced | Notes |
 |---|---|---|---|
 | Mark-as-paid + quick-pay on invoices | live | Phase 4 / `8cae18e` | |
-| Paystack payment links + team disbursements | partial | `a9a3a51` | Webhook needs live config — MASTER_DOCUMENT.md §15.2 |
-| Stable public invoice payment links (`publicToken`) | live | `44d3c2a`, `871fa61` | |
+| Public invoice view (`publicToken`) with bank transfer details | live | `44d3c2a`, `871fa61` | Payment is recorded manually by staff; no online payment gateway |
+| ~~Paystack payment links + team disbursements~~ | **removed** | added `a9a3a51`, removed `chore/remove-paystack` | Online invoice payment, the Payments page (team NGN transfers), and the `bankAccount`/`recipientCode` fields on User were all pulled out. `Invoice.payments.method` keeps `'paystack'` as a valid enum value only so historical payment records already saved with that method don't fail validation on a future `.save()` — nothing generates new ones. |
 
 ## Smart Estimator (Phase 5)
 
@@ -148,7 +148,6 @@ platform-owner only, not customer-facing).
 ## Known partial / unconfigured (not code gaps — see MASTER_DOCUMENT.md §15)
 
 - AWS S3 image uploads — dependency present, not configured
-- Paystack online payments — webhook not configured live
 - Browser push notifications — VAPID keys not generated
 - Company logo on invoice PDF — pending asset
 - Site Report Summariser's AI mode and the AI BOQ Drafter — both need `ANTHROPIC_API_KEY` set in production; the Summariser's extractive fallback works today with no configuration, the BOQ Drafter does not function at all without the key
