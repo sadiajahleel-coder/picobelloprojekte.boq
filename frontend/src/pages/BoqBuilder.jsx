@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, X, Pencil, Trash2, ChevronLeft, FileSpreadsheet, CheckCircle, AlertTriangle, ClipboardCheck } from 'lucide-react';
+import { Plus, X, Pencil, Trash2, ChevronLeft, FileSpreadsheet, CheckCircle, AlertTriangle, ClipboardCheck, Sparkles } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ExcelImport from '../components/ExcelImport';
@@ -105,6 +105,180 @@ function VersionModal({ open, onClose, onSaved, editing }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function AiDraftModal({ open, onClose, onCreated }) {
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState('');
+  const [name, setName] = useState('');
+  const [currency, setCurrency] = useState('NGN');
+  const [description, setDescription] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [notConfigured, setNotConfigured] = useState(false);
+  const [draftItems, setDraftItems] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    api.get('/projects').then(({ data }) => setProjects(data.projects)).catch(console.error);
+    setProjectId(''); setName(''); setCurrency('NGN'); setDescription('');
+    setError(''); setNotConfigured(false); setDraftItems(null);
+  }, [open]);
+
+  const generate = async () => {
+    if (!projectId) { setError('Choose a project first.'); return; }
+    if (!description.trim()) { setError('Describe the project first.'); return; }
+    setGenerating(true); setError(''); setNotConfigured(false); setDraftItems(null);
+    try {
+      const { data } = await api.post('/boq/ai-draft', { description, projectId });
+      if (!data.configured) { setNotConfigured(true); setError(data.error); return; }
+      if (data.error) { setError(data.error); return; }
+      setDraftItems(data.items.map((it) => ({ ...it, quantity: String(it.quantity), baseCost: String(it.baseCost) })));
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Failed to generate draft');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const updateRow = (i, k, v) => setDraftItems((rows) => rows.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
+  const removeRow = (i) => setDraftItems((rows) => rows.filter((_, idx) => idx !== i));
+
+  const total = (draftItems || []).reduce((s, r) => s + (parseFloat(r.quantity) || 0) * (parseFloat(r.baseCost) || 0), 0);
+
+  const createBoq = async () => {
+    if (!name.trim()) { setError('Give this BOQ a name.'); return; }
+    if (!draftItems?.length) { setError('No items to save.'); return; }
+    setCreating(true); setError('');
+    try {
+      const { data: versionData } = await api.post('/boq', {
+        projectId, name, currency,
+        description: `AI-drafted from: ${description.slice(0, 300)}`,
+      });
+      const versionId = versionData.version._id;
+      for (const row of draftItems) {
+        await api.post(`/boq/${versionId}/items`, {
+          item: row.item, description: row.description, unit: row.unit,
+          quantity: row.quantity, baseCost: row.baseCost,
+        });
+      }
+      onCreated(versionId);
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Failed to create BOQ from draft');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto z-50">
+      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl my-4">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Sparkles size={17} className="text-primary-900" /> AI BOQ Draft</h2>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-600" /></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {error && (
+            <div className={`border px-4 py-3 rounded-lg text-sm ${notConfigured ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {error}
+            </div>
+          )}
+
+          {!draftItems && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Project *</label>
+                <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls + ' bg-white'}>
+                  <option value="">Select project…</option>
+                  {projects.map((p) => <option key={p._id} value={p._id}>{p.name} — {p.client}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">BOQ Name *</label>
+                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="e.g. AI Draft — Phase 1" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Currency</label>
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputCls + ' bg-white'}>
+                    {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Describe the project *</label>
+                <textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} className={inputCls + ' resize-none'}
+                  placeholder="e.g. Two-bedroom bungalow, 120sqm, standard finish — foundation, block walls, roofing, plumbing, electrical, tiling, painting…" />
+              </div>
+              <button onClick={generate} disabled={generating}
+                className="w-full flex items-center justify-center gap-2 bg-primary-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-800 disabled:opacity-60">
+                <Sparkles size={15} /> {generating ? 'Generating…' : 'Generate Draft'}
+              </button>
+            </>
+          )}
+
+          {draftItems && (
+            <>
+              <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      {['Item', 'Unit', 'Qty', 'Base Cost', 'Source', ''].map((h) => (
+                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {draftItems.map((row, i) => (
+                      <tr key={i}>
+                        <td className="px-3 py-2">
+                          <p className="font-medium text-gray-800">{row.item}</p>
+                          {row.description && <p className="text-xs text-gray-400">{row.description}</p>}
+                        </td>
+                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{row.unit}</td>
+                        <td className="px-3 py-2">
+                          <input type="number" min="0" step="any" value={row.quantity}
+                            onChange={(e) => updateRow(i, 'quantity', e.target.value)}
+                            className="w-20 px-2 py-1 border border-gray-200 rounded text-sm" />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input type="number" min="0" step="0.01" value={row.baseCost}
+                            onChange={(e) => updateRow(i, 'baseCost', e.target.value)}
+                            className="w-24 px-2 py-1 border border-gray-200 rounded text-sm" />
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${row.source === 'library' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {row.source === 'library' ? 'Your library' : 'AI estimate'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <button onClick={() => removeRow(i)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-gray-400">
+                {draftItems.length} item{draftItems.length !== 1 ? 's' : ''} — estimated total {currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.
+                Review every rate before creating — AI estimates are a starting point, not a quote.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDraftItems(null)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Back</button>
+                <button onClick={createBoq} disabled={creating}
+                  className="flex-1 bg-primary-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-800 disabled:opacity-60">
+                  {creating ? 'Creating…' : `Create BOQ (${draftItems.length} items)`}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -226,6 +400,7 @@ export default function BoqBuilder() {
   const [reviewerOpen, setReviewerOpen] = useState(true);
   const [versionModal, setVersionModal] = useState(false);
   const [editingVersion, setEditingVersion] = useState(null);
+  const [aiDraftModal, setAiDraftModal] = useState(false);
   const [itemModal, setItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
@@ -291,10 +466,16 @@ export default function BoqBuilder() {
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-gray-500">{versions.length} BOQ document{versions.length !== 1 ? 's' : ''}</p>
           {canEdit && (
-            <button onClick={() => { setEditingVersion(null); setVersionModal(true); }}
-              className="flex items-center gap-2 bg-primary-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-800">
-              <Plus size={16} /> New BOQ
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setAiDraftModal(true)}
+                className="flex items-center gap-2 border border-primary-900 text-primary-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-50">
+                <Sparkles size={16} /> AI Draft
+              </button>
+              <button onClick={() => { setEditingVersion(null); setVersionModal(true); }}
+                className="flex items-center gap-2 bg-primary-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary-800">
+                <Plus size={16} /> New BOQ
+              </button>
+            </div>
           )}
         </div>
 
@@ -338,6 +519,15 @@ export default function BoqBuilder() {
 
         <VersionModal open={versionModal} onClose={() => setVersionModal(false)}
           onSaved={() => { setVersionModal(false); fetchVersions(); }} editing={editingVersion} />
+        <AiDraftModal open={aiDraftModal} onClose={() => setAiDraftModal(false)}
+          onCreated={async (versionId) => {
+            setAiDraftModal(false);
+            fetchVersions();
+            const { data } = await api.get(`/boq/${versionId}`);
+            setActiveVersion(data.version);
+            setItems(data.items);
+            setMissingItems(data.missingItems || []);
+          }} />
       </div>
     );
   }

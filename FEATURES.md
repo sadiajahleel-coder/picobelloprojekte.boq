@@ -100,6 +100,12 @@ platform-owner only, not customer-facing).
 | Invoice crash bug fix + client portal project scoping | live | `bff2643` | |
 | `documentAggregator` hardened against unvalidated caller | live | `5bc2cad` | |
 
+## AI BOQ Drafter
+
+| Feature | Status | Introduced | Notes |
+|---|---|---|---|
+| Draft BOQ line items from a free-text project description | partial | `feature/ai-boq-drafter` | Needs `ANTHROPIC_API_KEY` — unlike the Site Report Summariser, there's no non-AI fallback here (generating line items from prose has no rule-based equivalent), so with no key set it returns a clear "not configured" message rather than a degraded result. Grounds rates against the company's own QS Pricing Library where an item matches (labeled "Your library" vs "AI estimate" in the UI); nothing is persisted until the user reviews the draft and clicks Create — that goes through the same `POST /boq` + `POST /boq/:id/items` endpoints the manual BOQ Builder uses. "AI Draft" button on the BOQ Builder page. Distinct from the existing rule-based "Smart Estimator" (Phase 5) — different feature, deliberately different name to avoid confusion. |
+
 ## Cash Flow Predictor
 
 | Feature | Status | Introduced | Notes |
@@ -145,7 +151,7 @@ platform-owner only, not customer-facing).
 - Paystack online payments — webhook not configured live
 - Browser push notifications — VAPID keys not generated
 - Company logo on invoice PDF — pending asset
-- Site Report Summariser's AI mode — needs `ANTHROPIC_API_KEY` set in production; the extractive fallback works today with no configuration
+- Site Report Summariser's AI mode and the AI BOQ Drafter — both need `ANTHROPIC_API_KEY` set in production; the Summariser's extractive fallback works today with no configuration, the BOQ Drafter does not function at all without the key
 
 ## Known schema gap (found while building the Summariser, not fixed here)
 

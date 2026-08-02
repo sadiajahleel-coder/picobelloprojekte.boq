@@ -1,9 +1,11 @@
 const BoqVersion = require('../models/BoqVersion');
 const BoqItem = require('../models/BoqItem');
 const QsPrice = require('../models/QsPrice');
+const Project = require('../models/Project');
 const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
 const { checkRate } = require('../utils/rateAlerter');
 const { reviewBoq } = require('../utils/boqReviewer');
+const { draftBoqItems } = require('../utils/aiBoqDrafter');
 
 async function recalculateVersionTotal(versionId) {
   const items = await BoqItem.find({ versionId });
@@ -104,4 +106,34 @@ const deleteItem = async (req, res) => {
   res.json({ message: 'Item deleted' });
 };
 
-module.exports = { getVersions, getVersion, createVersion, updateVersion, deleteVersion, addItem, updateItem, deleteItem };
+// ── AI Draft ────────────────────────────────────────────────────────────────────────
+// Nothing is persisted here — returns a draft for the user to review and edit before
+// creating a real BOQ version/items through the endpoints above.
+const aiDraftBoq = async (req, res) => {
+  const { description, projectId } = req.body;
+
+  const allowedIds = await getAllowedProjectIds(req.user);
+  if (projectId && allowedIds !== null && !allowedIds.includes(String(projectId))) {
+    return res.status(404).json({ message: 'Project not found' });
+  }
+
+  const [project, qsPrices] = await Promise.all([
+    projectId ? Project.findOne({ _id: projectId, companyId: req.user.companyId }).select('name currency') : null,
+    QsPrice.find({ companyId: req.user.companyId }).select('item unit price').lean(),
+  ]);
+
+  const result = await draftBoqItems(description, {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: process.env.ANTHROPIC_MODEL,
+    projectName: project?.name,
+    currency: project?.currency,
+    qsPrices,
+  });
+
+  res.json(result);
+};
+
+module.exports = {
+  getVersions, getVersion, createVersion, updateVersion, deleteVersion,
+  addItem, updateItem, deleteItem, aiDraftBoq,
+};
