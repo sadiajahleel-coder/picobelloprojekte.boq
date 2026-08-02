@@ -99,6 +99,7 @@ platform-owner only, not customer-facing).
 | Strict opt-in client/QS/PM scoping (Dashboard, Analytics, Documents, BOQ, Price Intelligence) | live | `96714b8`, `2d0ba98`, `4915ed5`, `9a55c69` | |
 | Invoice crash bug fix + client portal project scoping | live | `bff2643` | |
 | `documentAggregator` hardened against unvalidated caller | live | `5bc2cad` | |
+| Sentry error tracking, genuinely wired up | live (needs `SENTRY_DSN` set) | `feature/sentry-integration` | Was listed as an env var for a long time with zero `Sentry.*` calls anywhere in the code — a documented placeholder, not a working integration. Now reports 5xx responses (`errorHandler.js`) and unhandled process errors (`index.js`); deliberately does not report expected 4xx errors. No-ops safely with no DSN set. Caught a real pre-existing bug while being built: the original `errorHandler.js` computed `statusCode` before the Mongoose/JWT-specific branches remapped it, so a naive "report if >=500" check would have reported every CastError/ValidationError/JWT error as if it were a real server error — fixed by moving the check after those branches, covered by `errorHandler.test.js`. |
 
 ## AI BOQ Drafter
 
