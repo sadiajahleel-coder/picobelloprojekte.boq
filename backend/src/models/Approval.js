@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const approvalSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', index: true },
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   boqVersionId: { type: mongoose.Schema.Types.ObjectId, ref: 'BoqVersion', required: true },
   boqItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'BoqItem', default: null },
