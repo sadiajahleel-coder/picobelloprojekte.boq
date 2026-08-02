@@ -5,6 +5,7 @@ const ProgressUpdate = require('../models/ProgressUpdate');
 const ChangeOrder = require('../models/ChangeOrder');
 const MaterialPrice = require('../models/MaterialPrice');
 const { getAllowedProjectIds } = require('../utils/clientScope');
+const { computeClientRisk } = require('../utils/cashFlowPredictor');
 
 function fmt2(n) { return parseFloat(Number(n || 0).toFixed(2)); }
 
@@ -238,3 +239,18 @@ const sendPaymentReminders = async (req, res) => {
   res.json({ sent: created, overdue: overdueInvoices.length });
 };
 exports.sendPaymentReminders = sendPaymentReminders;
+
+// ── 6. Cash Flow Risk (rule-based, no external API) ──────────────────────────────────
+const getCashFlowRisk = async (req, res) => {
+  const filter = { companyId: req.user.companyId, status: { $ne: 'draft' } };
+  const allowedIds = await getAllowedProjectIds(req.user);
+  if (allowedIds !== null) filter.projectId = { $in: allowedIds };
+
+  const invoices = await Invoice.find(filter)
+    .select('clientName clientEmail total balance amountPaid status dueDate payments projectId')
+    .populate('projectId', 'name');
+
+  const clients = computeClientRisk(invoices);
+  res.json({ clients });
+};
+exports.getCashFlowRisk = getCashFlowRisk;

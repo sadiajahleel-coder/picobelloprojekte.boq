@@ -338,11 +338,90 @@ function SupplierTab() {
   );
 }
 
+// ── Tab: Cash Flow Risk ─────────────────────────────────────────────────────────
+function CashFlowTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/analytics/cash-flow-risk').then(({ data }) => setData(data)).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-center py-16 text-gray-400">Scoring payment history…</div>;
+
+  const tierStyles = {
+    high:   { badge: 'bg-red-100 text-red-700', border: 'border-red-200', label: 'High Risk' },
+    medium: { badge: 'bg-yellow-100 text-yellow-700', border: 'border-yellow-200', label: 'Medium Risk' },
+    low:    { badge: 'bg-green-100 text-green-700', border: 'border-gray-100', label: 'Low Risk' },
+  };
+
+  const clients = data?.clients || [];
+  const atRisk = clients.filter((c) => c.tier !== 'low').length;
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-primary-900 text-white rounded-2xl p-5 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-blue-300 text-sm">Clients Flagged</p>
+          <p className="text-3xl font-bold">{atRisk} <span className="text-lg font-normal text-blue-200">of {clients.length}</span></p>
+        </div>
+        <p className="text-blue-200 text-xs max-w-xs text-right">
+          Based on how late each client has actually paid past invoices — not just current balance.
+        </p>
+      </div>
+
+      {clients.map((c) => {
+        const style = tierStyles[c.tier];
+        return (
+          <div key={c.clientEmail || c.clientName} className={`bg-white rounded-2xl border shadow-sm p-5 ${style.border}`}>
+            <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+              <div>
+                <p className="font-semibold text-gray-800">{c.clientName}</p>
+                {c.clientEmail && <p className="text-xs text-gray-400">{c.clientEmail}</p>}
+              </div>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold shrink-0 ${style.badge}`}>{style.label}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3 text-sm">
+              <div>
+                <p className="text-xs text-gray-400">Invoices</p>
+                <p className="font-semibold text-gray-700">{c.invoiceCount}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Outstanding</p>
+                <p className="font-semibold text-gray-700">₦{fmt(c.totalOutstanding)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">On-Time Rate</p>
+                <p className="font-semibold text-gray-700">{Math.round(c.onTimeRate * 100)}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Avg Days Late</p>
+                <p className="font-semibold text-gray-700">{c.avgDaysLate || 0}</p>
+              </div>
+            </div>
+            <ul className="text-xs text-gray-500 space-y-0.5">
+              {c.reasons.map((r, i) => <li key={i}>• {r}</li>)}
+            </ul>
+          </div>
+        );
+      })}
+
+      {clients.length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <TrendingDown size={40} className="mx-auto mb-3 opacity-20" />
+          <p className="font-medium">No invoice history to score yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Analytics Page ────────────────────────────────────────────────────────
 const TABS = [
   { id: 'profit', label: 'Profit Report', icon: TrendingUp },
   { id: 'variance', label: 'Cost Variance', icon: BarChart2 },
   { id: 'outstanding', label: 'Outstanding', icon: Clock },
+  { id: 'cashflow', label: 'Cash Flow Risk', icon: TrendingDown },
   { id: 'supplier', label: 'Supplier History', icon: Package },
 ];
 
@@ -394,6 +473,7 @@ export default function Analytics() {
       {tab === 'profit' && <ProfitTab />}
       {tab === 'variance' && <VarianceTab />}
       {tab === 'outstanding' && <OutstandingTab />}
+      {tab === 'cashflow' && <CashFlowTab />}
       {tab === 'supplier' && <SupplierTab />}
     </div>
   );
