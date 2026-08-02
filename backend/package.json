@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node --test src/utils/*.test.js src/middleware/*.test.js src/controllers/*.test.js src/models/*.test.js"
+    "test": "node --test src/utils/*.test.js src/middleware/*.test.js src/controllers/*.test.js src/models/*.test.js src/config/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

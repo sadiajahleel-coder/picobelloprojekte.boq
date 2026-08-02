@@ -8,6 +8,7 @@ const helmet         = require('helmet');
 const mongoSanitize  = require('express-mongo-sanitize');
 const hpp            = require('hpp');
 const connectDB      = require('./config/database');
+const { checkOrigin } = require('./config/corsOptions');
 const errorHandler   = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
@@ -47,21 +48,7 @@ process.on('unhandledRejection', (err) => Sentry.captureException(err));
 process.on('uncaughtException', (err) => Sentry.captureException(err));
 
 // ── CORS ───────────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'http://localhost:5173',
-  'http://localhost:3000',
-].filter(Boolean);
-
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.some((o) => origin.startsWith(o))) return cb(null, true);
-    if (origin.endsWith('.onrender.com')) return cb(null, true);
-    cb(new Error(`CORS: origin ${origin} not allowed`));
-  },
-  credentials: true,
-}));
+app.use(cors({ origin: checkOrigin, credentials: true }));
 
 // ── Security headers ─────────────────────────────────────────────────────────────────
 app.use(helmet());
