@@ -13,6 +13,7 @@ const {
 } = require('../controllers/boqController');
 const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
+const { aiLimiter } = require('../middleware/rateLimiter');
 
 // BOQ Versions
 router.get('/', authenticate, getVersions);
@@ -22,7 +23,7 @@ router.put('/:id', authenticate, authorize('admin', 'qs', 'project_manager'), up
 router.delete('/:id', authenticate, authorize('admin'), deleteVersion);
 
 // AI Draft — not persisted, returns a draft for review before saving via the endpoints above
-router.post('/ai-draft', authenticate, authorize('admin', 'qs', 'project_manager'), aiDraftBoq);
+router.post('/ai-draft', authenticate, authorize('admin', 'qs', 'project_manager'), aiLimiter, aiDraftBoq);
 
 // BOQ Items
 router.post('/:id/items', authenticate, authorize('admin', 'qs', 'project_manager'), addItem);

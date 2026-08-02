@@ -12,7 +12,7 @@ const {
 const { multerMemoryConfig } = require('../utils/s3Upload');
 const upload = multerMemoryConfig();
 const { authenticate, authorize } = require('../middleware/auth');
-const { authLimiter }           = require('../middleware/rateLimiter');
+const { authLimiter, uploadLimiter } = require('../middleware/rateLimiter');
 const { zodValidate, schemas }  = require('../middleware/zodValidate');
 
 router.post('/register',
@@ -52,7 +52,7 @@ router.delete('/team/:id',     authenticate, authorize('admin'), removeMember);
 
 router.post('/accept-invite/:token', acceptInvite);
 router.post('/request-onboarding', authLimiter, requestOnboarding);
-router.patch('/me/profile', authenticate, upload.single('avatar'), updateProfile);
+router.patch('/me/profile', authenticate, uploadLimiter, upload.single('avatar'), updateProfile);
 router.patch('/me/password', authenticate, changePassword);
 router.patch('/me/onboarded',           authenticate, markOnboarded);
 router.patch('/me/book-call',           authenticate, bookCall);
