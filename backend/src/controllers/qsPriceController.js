@@ -1,8 +1,9 @@
 const QsPrice = require('../models/QsPrice');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
-  if (req.query.category) filter.category = new RegExp(req.query.category, 'i');
+  if (req.query.category) filter.category = new RegExp(escapeRegex(req.query.category), 'i');
 
   const prices = await QsPrice.find(filter)
     .populate('createdBy', 'name')
