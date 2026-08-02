@@ -70,7 +70,6 @@ import TeamManagement     from './pages/TeamManagement';
 import Profile            from './pages/Profile';
 import OwnerDashboard     from './pages/OwnerDashboard';
 import Waitlist           from './pages/Waitlist';
-import Payments           from './pages/Payments';
 import PayInvoice         from './pages/PayInvoice';
 import MasterImport       from './pages/MasterImport';
 
@@ -145,7 +144,6 @@ export default function App() {
 
             {/* Admin */}
             <Route path="settings"               element={<CompanySettings />} />
-            <Route path="payments"               element={<Payments />} />
             <Route path="team"                   element={<TeamManagement />} />
             <Route path="profile"                element={<Profile />} />
             <Route path="owner"                  element={<OwnerDashboard />} />

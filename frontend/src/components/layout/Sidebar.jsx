@@ -10,7 +10,7 @@ import {
   TrendingUp, GitPullRequest, ClipboardList, BarChart2, GanttChartSquare,
   Settings, LogOut, Moon, Sun, ShieldCheck,
   Receipt, UserCog, Library, Layers, CheckSquare, MessageSquare,
-  Lock, LayoutGrid, CreditCard, History, Sliders, Upload,
+  Lock, LayoutGrid, History, Sliders, Upload,
 } from 'lucide-react';
 
 import { SUPER_EMAILS, DEV_EMAIL } from '../../constants';
@@ -80,7 +80,6 @@ const NAV_GROUPS = [
     heading: 'Admin',
     items: [
       { to: '/app/team',          icon: UserCog,    label: 'Team Management', adminOnly: true },
-      { to: '/app/payments',      icon: CreditCard, label: 'Payments',         adminOnly: true },
       { to: '/app/master-import', icon: Upload,     label: 'Master Import',    adminOnly: true },
       { to: '/app/settings',      icon: Settings,   label: 'Company Settings', clientHidden: true },
     ],
