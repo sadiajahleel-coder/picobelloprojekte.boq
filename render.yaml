@@ -53,6 +53,22 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_EMPLOYEE_ID
         sync: false
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: OWNER_EMAIL
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: UNLOCK_SECRET
+        generateValue: true
 
   - type: static
     name: squaremetre-frontend

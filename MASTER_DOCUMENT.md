@@ -316,6 +316,14 @@ Open http://localhost:5173 — you should see the landing page.
 | `AWS_ACCESS_KEY_ID` | Optional | AWS credentials for S3 | AWS IAM console |
 | `AWS_SECRET_ACCESS_KEY` | Optional | AWS credentials for S3 | AWS IAM console |
 | `S3_BUCKET_NAME` | Optional | S3 bucket name for file uploads | Create in AWS S3 console |
+| `S3_PRESIGNED_URL_EXPIRES` | Optional | Seconds before a generated S3 upload URL expires | Plain config, e.g. `3600` |
+| `JWT_REFRESH_SECRET` / `JWT_REFRESH_EXPIRES_IN` | Not currently used | Generated on every deploy but no refresh-token flow reads them — see §15 | Dead config, safe to leave as-is or remove |
+| `ENCRYPTION_KEY` | **Critical** | Generic app-level encryption secret | Generate the same way as `JWT_SECRET`, never reuse across environments |
+| `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` / `EMAIL_FROM` | Optional | SMTP config for team-invite and waitlist/admin notification emails | Your email provider's SMTP credentials |
+| `OWNER_EMAIL` | Optional | Receives waitlist-signup and admin notification emails | Your own admin inbox |
+| `UNLOCK_SECRET` | **Critical** if using Book-a-Call | Header secret (`x-unlock-secret`) gating the book-a-call completion endpoint (`authController.completeCall`) | Generate the same way as `JWT_SECRET` |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` / `BOOTSTRAP_ADMIN_EMPLOYEE_ID` | Optional | Creates the first admin account on a fresh deploy | Pick your own — rotate before handing off to a new owner |
+| `SENTRY_DSN` | Optional | Error tracking | Your own Sentry project, if used — verify it's actually wired up in code before assuming it's live |
 
 ### Frontend `.env.local`
 
@@ -653,43 +661,38 @@ router.post('/', protect, authorize('admin', 'qs', 'project_manager'), createRec
 
 ## 13. HOW TO DEPLOY (RENDER.COM)
 
-### First-time setup
+There used to be three `render.yaml` files in this repo (root, `backend/`,
+`frontend/`) with conflicting, pre-rebrand service names and mismatched env
+var lists — the two subdirectory ones were dead duplicates never actually
+used by Render's Blueprint feature (which only reads `render.yaml` at the
+repo root) and have been removed. **The root `render.yaml` is the single
+source of truth.**
 
-**Step 1 — Create a Render account**
-Go to https://render.com and connect your GitHub account.
+### First-time setup (Blueprint — recommended)
 
-**Step 2 — Deploy the Backend**
-1. Render Dashboard → New → Web Service
-2. Connect repository: `tidan1023-web/picobelloprojekte.boq`
-3. Settings:
-   - **Name:** `pico-bello-boq-api`
-   - **Root Directory:** `backend`
-   - **Build Command:** `npm install`
-   - **Start Command:** `node src/index.js`
-   - **Node Version:** 18 or higher
-4. Add all environment variables from Section 7
-5. Click **Create Web Service**
+1. Go to https://render.com and connect your GitHub account.
+2. Render Dashboard → New → **Blueprint**
+3. Connect repository: `tidan1023-web/picobelloprojekte.boq`, branch `main`
+4. Render reads the root `render.yaml` and proposes both services
+   (`picobelloprojekte-boq-api` and `squaremetre-frontend`) automatically —
+   review and create them.
+5. Fill in every `sync: false` variable listed in Section 7 in the Render
+   dashboard (Blueprint doesn't prompt for all of them up front).
+6. Set the frontend's `VITE_API_URL` to the backend service's live URL
+   (`https://<backend-service>.onrender.com/api`), and the backend's
+   `CLIENT_URL`/`FRONTEND_URL` to the frontend's live URL, once both exist.
 
-**Step 3 — Deploy the Frontend**
-1. Render Dashboard → New → Static Site
-2. Same repository
-3. Settings:
-   - **Name:** `pico-bello-boq-frontend`
-   - **Root Directory:** `frontend`
-   - **Build Command:** `npm install && npm run build`
-   - **Publish Directory:** `dist`
-4. Add environment variables:
-   - `VITE_API_URL` = `https://pico-bello-boq.onrender.com/api`
-5. Click **Create Static Site**
+### If you'd rather set services up manually instead of via Blueprint
 
-**Step 4 — Update backend CORS**
-In your backend environment variables, set:
-```
-CLIENT_URL=https://your-frontend-name.onrender.com
-```
+Same settings as `render.yaml` describes — Root Directory `backend` /
+`frontend`, build/start commands as in the file — but you'll need to add
+every environment variable from Section 7 yourself, since a manually
+created service doesn't read `render.yaml` at all.
 
 ### Auto-deploy on push
-Once connected, every push to `main` triggers an automatic redeploy. No manual steps needed.
+Once connected, every push to `main` triggers an automatic redeploy. No
+manual steps needed. Note that `staging` has no hosted Render environment
+yet — see `BRANCHING.md` for how to add one.
 
 ### Checking deploy logs
 Render Dashboard → your service → **Logs** tab. If the service fails to start, the error is shown here.
