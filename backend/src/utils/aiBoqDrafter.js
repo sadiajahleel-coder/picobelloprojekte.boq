@@ -38,9 +38,14 @@ function buildPrompt(description, { projectName, currency, qsPrices }) {
 }
 
 function parseItems(text) {
-  // Model was asked for raw JSON, but strip markdown fences defensively
-  // in case it wraps the response anyway.
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '');
+  // Model was asked for raw JSON only, but LLMs don't always comply —
+  // strip markdown fences and, if there's still leading/trailing prose,
+  // extract just the outermost [...] array before parsing.
+  let cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  if (!cleaned.startsWith('[')) {
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (match) cleaned = match[0];
+  }
   const parsed = JSON.parse(cleaned);
   if (!Array.isArray(parsed)) throw new Error('Response was not a JSON array');
 
@@ -95,4 +100,4 @@ async function draftBoqItems(description, { apiKey, model, baseURL, timeout, pro
   }
 }
 
-module.exports = { draftBoqItems };
+module.exports = { draftBoqItems, parseItems };

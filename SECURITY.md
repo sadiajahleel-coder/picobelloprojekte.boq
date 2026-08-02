@@ -1,4 +1,4 @@
-# Security Hardening — Warehouse Inventory HQ
+# Security Hardening — SquareMetre BOQ System
 
 **Date:** 2026-05-08  
 **Commit:** `6d14e63`  

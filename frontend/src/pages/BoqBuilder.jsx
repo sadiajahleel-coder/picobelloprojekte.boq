@@ -154,24 +154,41 @@ function AiDraftModal({ open, onClose, onCreated }) {
     if (!name.trim()) { setError('Give this BOQ a name.'); return; }
     if (!draftItems?.length) { setError('No items to save.'); return; }
     setCreating(true); setError('');
+
+    let versionId;
     try {
       const { data: versionData } = await api.post('/boq', {
         projectId, name, currency,
         description: `AI-drafted from: ${description.slice(0, 300)}`,
       });
-      const versionId = versionData.version._id;
-      for (const row of draftItems) {
+      versionId = versionData.version._id;
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Failed to create the BOQ version');
+      setCreating(false);
+      return;
+    }
+
+    // Version now exists — add items independently so one bad row can't
+    // abandon the rest, and can't leave the version dangling with an
+    // opaque error (retrying "Create" would otherwise create a second,
+    // duplicate version rather than resuming this one).
+    let failed = 0;
+    for (const row of draftItems) {
+      try {
         await api.post(`/boq/${versionId}/items`, {
           item: row.item, description: row.description, unit: row.unit,
           quantity: row.quantity, baseCost: row.baseCost,
         });
+      } catch {
+        failed++;
       }
-      onCreated(versionId);
-    } catch (err) {
-      setError(err.response?.data?.message ?? 'Failed to create BOQ from draft');
-    } finally {
-      setCreating(false);
     }
+    setCreating(false);
+
+    if (failed > 0) {
+      alert(`BOQ created, but ${failed} of ${draftItems.length} item(s) failed to save. Add the missing ones manually from the BOQ Builder.`);
+    }
+    onCreated(versionId);
   };
 
   if (!open) return null;
