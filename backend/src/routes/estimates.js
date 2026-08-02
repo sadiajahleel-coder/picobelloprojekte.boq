@@ -9,7 +9,7 @@ router.use(authenticate);
 // Estimates aren't part of the client portal — nothing here concerns a
 // client account, so read access is restricted the same as write access.
 const canWrite = authorize('admin', 'qs', 'project_manager');
-router.post('/calculate', canWrite, ctrl.calculate);
+router.post('/calculate', canWrite, zodValidate(schemas.estimateCalculate), ctrl.calculate);
 router.get('/',           canWrite, ctrl.list);
 router.get('/:id',        canWrite, ctrl.getOne);
 router.get('/:id/pdf',    canWrite, ctrl.generatePdf);
