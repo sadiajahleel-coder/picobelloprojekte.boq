@@ -286,7 +286,7 @@ const completeCall = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
   }
   const user = await User.findOneAndUpdate(
-    { _id: req.params.id },
+    { _id: req.params.id, companyId: req.user.companyId },
     { callCompleted: true },
     { new: true },
   );
