@@ -85,7 +85,7 @@ function buildPrompt(reports, projectName) {
 // reports: array of SiteReport docs for the period, already fetched/scoped.
 // options.apiKey / options.model: from process.env, passed in rather than
 // read directly so this module has no hidden global dependency.
-async function summarizeReports(reports, { apiKey, model, projectName } = {}) {
+async function summarizeReports(reports, { apiKey, model, projectName, baseURL, timeout } = {}) {
   const fallback = buildExtractiveSummary(reports);
 
   if (!apiKey) {
@@ -94,7 +94,12 @@ async function summarizeReports(reports, { apiKey, model, projectName } = {}) {
 
   try {
     const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({
+      apiKey,
+      maxRetries: 0,
+      ...(baseURL ? { baseURL } : {}),
+      ...(timeout ? { timeout } : {}),
+    });
     const message = await client.messages.create({
       model: model || DEFAULT_MODEL,
       max_tokens: 400,
