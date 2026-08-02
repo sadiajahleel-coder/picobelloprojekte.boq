@@ -320,7 +320,7 @@ Open http://localhost:5173 — you should see the landing page.
 | `OWNER_EMAIL` | Optional | Receives waitlist-signup and admin notification emails | Your own admin inbox |
 | `UNLOCK_SECRET` | **Critical** if using Book-a-Call | Header secret (`x-unlock-secret`) gating the book-a-call completion endpoint (`authController.completeCall`) | Generate the same way as `JWT_SECRET` |
 | `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` / `BOOTSTRAP_ADMIN_EMPLOYEE_ID` | Optional | Creates the first admin account on a fresh deploy | Pick your own — rotate before handing off to a new owner |
-| `SENTRY_DSN` | Optional | Error tracking | Your own Sentry project, if used — verify it's actually wired up in code before assuming it's live |
+| `SENTRY_DSN` | Optional | Error tracking — reports every 5xx response and unhandled process error (`config/sentry.js`, `middleware/errorHandler.js`). Expected 4xx errors (bad input, auth, not-found) are deliberately not reported — that's normal traffic, not a bug. No-ops with no DSN set. | Sentry dashboard → Project Settings → Client Keys (DSN) |
 
 ### Frontend `.env.local`
 

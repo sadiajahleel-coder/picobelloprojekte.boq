@@ -1,5 +1,6 @@
 require('dotenv').config();
 require('express-async-errors');
+const Sentry = require('./config/sentry'); // manual error capture only — see errorHandler.js
 
 const express        = require('express');
 const cors           = require('cors');
@@ -39,6 +40,11 @@ const waitlistRoutes       = require('./routes/waitlist');
 const app = express();
 app.set('trust proxy', 1); // Render sits behind a reverse proxy
 connectDB();
+
+// Crashes that never reach Express's error middleware (e.g. an async error
+// outside a request) would otherwise be invisible to Sentry entirely.
+process.on('unhandledRejection', (err) => Sentry.captureException(err));
+process.on('uncaughtException', (err) => Sentry.captureException(err));
 
 // ── CORS ───────────────────────────────────────────────────────────────────────────
 const allowedOrigins = [

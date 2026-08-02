@@ -1,5 +1,6 @@
 'use strict';
 const logger = require('../utils/logger');
+const Sentry = require('../config/sentry');
 
 // Safe messages to expose in production for common error types
 const SAFE_MESSAGES = {
@@ -47,6 +48,12 @@ function errorHandler(err, req, res, _next) {
   // Body parse error (malformed JSON)
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ message: SAFE_MESSAGES.SyntaxError });
+  }
+
+  // Everything past this point is a genuinely unhandled error type — not
+  // one of the expected 4xx cases above, which all returned already.
+  if (statusCode >= 500) {
+    Sentry.captureException(err);
   }
 
   // In production: never leak internal error messages for 5xx responses
