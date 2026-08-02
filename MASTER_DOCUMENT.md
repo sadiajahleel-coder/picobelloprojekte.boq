@@ -86,16 +86,20 @@ Stateless authentication — the backend doesn't store session state in a databa
 |------|-----|
 | **GitHub Repository** | https://github.com/tidan1023-web/picobelloprojekte.boq |
 | **Production Branch** | `main` — all deploys come from this branch |
-| **Dev Branch** | `claude/zen-lovelace-5kwudl` |
+| **Staging Branch** | `staging` — release candidate / dress rehearsal |
+| **Dev Branch** | `dev` — active development integration branch |
 | **Backend API (Render)** | https://pico-bello-boq.onrender.com |
 | **Frontend (Render)** | *(check Render dashboard for static site URL)* |
 | **API Health Check** | https://pico-bello-boq.onrender.com/api/health |
 | **Paystack Webhook URL** | https://pico-bello-boq.onrender.com/api/paystack/webhook |
 
 ### GitHub branch rules:
-- **Never push directly to `main` without testing** — `main` triggers an automatic Render deploy
-- Development happens on the dev branch, then merged/pushed to `main` when ready
-- Render watches `main` and redeploys automatically on every push
+
+See `BRANCHING.md` for the full workflow. Summary: `feature/*` branches PR
+into `dev`, `dev` PRs into `staging`, `staging` PRs into `main`. Never push
+directly to `main` — it triggers an automatic Render deploy of both live
+services on every push. `FEATURES.md` catalogs what's already been built and
+which commit introduced it.
 
 ---
 
