@@ -11,6 +11,7 @@ const { sendWelcome, sendPasswordReset, sendBookingConfirmation, sendTeamInvite,
 const { validateImageBuffer, uploadImageToS3, deleteImageFromS3 } = require('../utils/s3Upload');
 const { S3_CONFIGURED } = require('../config/s3');
 const { sendWhatsApp } = require('../utils/whatsapp');
+const { SUPER_EMAILS } = require('../config/superEmails');
 const logger = require('../utils/logger');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -333,7 +334,6 @@ const updateProfile = async (req, res) => {
 };
 
 // ── updateMemberPlan ──────────────────────────────────────────────────────────
-const SUPER_EMAILS = ['sadiajahleel@gmail.com'];
 const updateMemberPlan = async (req, res) => {
   if (!SUPER_EMAILS.includes(req.user.email)) {
     return res.status(403).json({ message: 'Not authorised.' });
@@ -364,10 +364,8 @@ const adminResetPassword = async (req, res) => {
 };
 
 // ── ownerDashboard ────────────────────────────────────────────────────────────
+// Authorization is enforced by requireSuperEmail at the route level.
 const ownerDashboard = async (req, res) => {
-  if (!SUPER_EMAILS.includes(req.user.email)) {
-    return res.status(403).json({ message: 'Not authorised.' });
-  }
   const users = await User.find({})
     .select('-password -resetPasswordToken -resetPasswordExpires -inviteToken -inviteTokenExpires')
     .sort({ createdAt: -1 })
@@ -383,10 +381,8 @@ const ownerDashboard = async (req, res) => {
 };
 
 // ── ownerSetPlan ──────────────────────────────────────────────────────────────
+// Authorization is enforced by requireSuperEmail at the route level.
 const ownerSetPlan = async (req, res) => {
-  if (!SUPER_EMAILS.includes(req.user.email)) {
-    return res.status(403).json({ message: 'Not authorised.' });
-  }
   const { plan } = req.body;
   if (!['free', 'basic', 'premium'].includes(plan)) {
     return res.status(400).json({ message: 'Invalid plan.' });
@@ -417,5 +413,4 @@ module.exports = {
   acceptInvite, requestOnboarding,
   updateMemberPlan, adminResetPassword,
   ownerDashboard, ownerSetPlan,
-  SUPER_EMAILS,
 };
