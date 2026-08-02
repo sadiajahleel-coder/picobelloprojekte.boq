@@ -1,7 +1,7 @@
 services:
   - type: web
     name: picobelloprojekte-boq-api
-    env: node
+    runtime: node
     region: oregon
     plan: starter
     rootDir: backend
@@ -70,10 +70,9 @@ services:
       - key: UNLOCK_SECRET
         generateValue: true
 
-  - type: static
+  - type: web
     name: squaremetre-frontend
-    region: oregon
-    plan: starter
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
