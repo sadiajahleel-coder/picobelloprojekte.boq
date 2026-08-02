@@ -41,9 +41,10 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
+  const { companyId, ...updates } = req.body;
   const contact = await Contact.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: new Date() },
+    { ...updates, updatedAt: new Date() },
     { new: true }
   );
   if (!contact) return res.status(404).json({ message: 'Contact not found' });

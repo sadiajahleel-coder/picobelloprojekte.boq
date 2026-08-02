@@ -59,33 +59,57 @@ describe('registerSchema', () => {
 });
 
 describe('invoiceSchema (money-path validation)', () => {
-  test('accepts a valid invoice with positive quantities and non-negative rates', () => {
+  test('accepts the real create-from-estimate payload (estimateId only) -- this used to 400 on every request', () => {
+    const result = schemas.invoice.safeParse({ estimateId: 'est1' });
+    assert.equal(result.success, true);
+  });
+
+  test('accepts the real standalone-creation payload sent by Invoices.jsx', () => {
     const result = schemas.invoice.safeParse({
-      title: 'Invoice #1',
-      lineItems: [{ description: 'Cement', quantity: 10, unitRate: 5000 }],
+      projectId: '', projectName: 'Garuba Duplex Renovation', clientName: 'Mr Garuba',
+      dueDate: '2026-09-01', currency: 'NGN',
     });
     assert.equal(result.success, true);
   });
 
-  test('rejects a zero or negative line-item quantity', () => {
+  test('accepts a negative unit rate as invalid', () => {
     const result = schemas.invoice.safeParse({
-      title: 'Invoice #1',
-      lineItems: [{ description: 'Cement', quantity: 0, unitRate: 5000 }],
-    });
-    assert.equal(result.success, false);
-  });
-
-  test('rejects a negative unit rate', () => {
-    const result = schemas.invoice.safeParse({
-      title: 'Invoice #1',
       lineItems: [{ description: 'Cement', quantity: 10, unitRate: -1 }],
     });
     assert.equal(result.success, false);
   });
 
-  test('rejects a missing title', () => {
-    const result = schemas.invoice.safeParse({ lineItems: [] });
+  test('strips an attacker-supplied companyId on the update path (mass-assignment fix)', () => {
+    const result = schemas.invoice.safeParse({ projectName: 'X', companyId: 'someone-elses-company' });
+    assert.equal(result.success, true);
+    assert.equal(result.data.companyId, undefined);
+  });
+});
+
+describe('estimateSchema / estimateUpdateSchema (money-path validation)', () => {
+  test('accepts the real payload sent by Estimator.jsx on create', () => {
+    const result = schemas.estimate.safeParse({
+      projectName: 'Garuba Duplex Renovation', clientName: '', clientPhone: '', clientEmail: '',
+      location: '', sizeM2: '250', condition: 'carcass', tier: 'basic',
+      includesFurniture: false, includesKitchen: false, includesWardrobes: false,
+      scopeAssumptions: '', exclusions: '', validityDays: 30,
+    });
+    assert.equal(result.success, true);
+    assert.equal(result.data.sizeM2, 250);
+  });
+
+  test('rejects a create payload missing condition/tier', () => {
+    const result = schemas.estimate.safeParse({ projectName: 'X', sizeM2: 100 });
     assert.equal(result.success, false);
+  });
+
+  test('estimateUpdate accepts a partial payload (the real shape EstimateDetail.jsx sends) and strips an injected companyId', () => {
+    const result = schemas.estimateUpdate.safeParse({
+      projectName: 'X', status: 'sent', taxPercent: 7.5, overheadPercent: 0, profitPercent: 0,
+      companyId: 'someone-elses-company',
+    });
+    assert.equal(result.success, true);
+    assert.equal(result.data.companyId, undefined);
   });
 });
 
