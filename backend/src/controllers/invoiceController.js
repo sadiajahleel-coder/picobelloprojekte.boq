@@ -4,6 +4,7 @@ const Company  = require('../models/Company');
 const Estimate = require('../models/Estimate');
 const Project  = require('../models/Project');
 const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
+const { recalcTotals } = require('../utils/invoiceCalculations');
 const PDFDocument = require('pdfkit');
 
 // ── helpers ────────────────────────────────────────────────────────────────────────
@@ -14,17 +15,6 @@ function fmtDate(d) {
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function recalcTotals(invoice) {
-  const subtotal = (invoice.lineItems || []).reduce((s, i) => s + (i.amount || 0), 0);
-  const vatAmount = subtotal * (invoice.vatRate || 0) / 100;
-  invoice.subtotal   = subtotal;
-  invoice.vatAmount  = vatAmount;
-  invoice.total      = subtotal + vatAmount;
-  invoice.amountPaid = (invoice.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-  invoice.balance    = invoice.total - invoice.amountPaid;
-  if (invoice.balance <= 0 && invoice.total > 0) invoice.status = 'paid';
 }
 
 // ── CRUD ────────────────────────────────────────────────────────────────────────────

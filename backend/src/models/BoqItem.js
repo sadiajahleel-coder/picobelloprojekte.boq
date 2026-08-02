@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { calculateBoqItem } = require('../utils/boqCalculations');
 
 const boqItemSchema = new mongoose.Schema({
   versionId: { type: mongoose.Schema.Types.ObjectId, ref: 'BoqVersion', required: true },
@@ -24,10 +25,9 @@ const boqItemSchema = new mongoose.Schema({
 
 // Auto-calculate on every save
 boqItemSchema.pre('save', function (next) {
-  const overhead = 1 + this.overheadPercent / 100;
-  const profit = 1 + this.profitPercent / 100;
-  this.finalUnitPrice = parseFloat((this.baseCost * overhead * profit).toFixed(2));
-  this.totalCost = parseFloat((this.finalUnitPrice * this.quantity).toFixed(2));
+  const { finalUnitPrice, totalCost } = calculateBoqItem(this);
+  this.finalUnitPrice = finalUnitPrice;
+  this.totalCost = totalCost;
   this.updatedAt = Date.now();
   next();
 });
