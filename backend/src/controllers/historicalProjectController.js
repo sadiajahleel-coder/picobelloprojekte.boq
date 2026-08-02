@@ -48,9 +48,10 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
+    const { companyId, ...updates } = req.body;
     const project = await HistoricalProject.findOneAndUpdate(
       { _id: req.params.id, companyId: req.user.companyId },
-      req.body,
+      updates,
       { new: true, runValidators: true }
     );
     if (!project) return res.status(404).json({ message: 'Project not found' });

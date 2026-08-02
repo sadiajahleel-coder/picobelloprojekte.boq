@@ -14,7 +14,7 @@ router.get('/',           canWrite, ctrl.list);
 router.get('/:id',        canWrite, ctrl.getOne);
 router.get('/:id/pdf',    canWrite, ctrl.generatePdf);
 router.post('/',      canWrite, zodValidate(schemas.estimate), ctrl.create);
-router.put('/:id',    canWrite, zodValidate(schemas.estimate), ctrl.update);
+router.put('/:id',    canWrite, zodValidate(schemas.estimateUpdate), ctrl.update);
 router.delete('/:id', canWrite, ctrl.remove);
 
 module.exports = router;

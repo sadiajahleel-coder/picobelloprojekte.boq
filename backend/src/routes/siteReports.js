@@ -110,9 +110,10 @@ router.post('/', canWrite, async (req, res) => {
 
 router.put('/:id', canWrite, async (req, res) => {
   const before = await SiteReport.findOne({ _id: req.params.id, companyId: req.user.companyId }).select('sharedWithClient');
+  const { companyId, ...updates } = req.body;
   const report = await SiteReport.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: new Date() },
+    { ...updates, updatedAt: new Date() },
     { new: true, runValidators: true },
   );
   if (!report) return res.status(404).json({ message: 'Report not found' });

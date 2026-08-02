@@ -54,35 +54,67 @@ const resetPasswordSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+// projectName/sizeM2/condition/tier match Estimator.jsx's required step-0/1/2
+// fields; everything else mirrors the real Estimate model fields the
+// EstimateDetail.jsx edit form actually sends. No .passthrough() -- unknown
+// keys (like a client-supplied companyId) are stripped by default, which is
+// what closes the mass-assignment gap on the update path.
 const estimateSchema = z.object({
-  projectName:  z.string().min(1, 'Project name is required').max(200),
-  clientName:   z.string().max(200).optional(),
-  clientEmail:  z.string().email('Invalid client email').optional().or(z.literal('')),
-  description:  z.string().max(2000).optional(),
-  lineItems:    z.array(z.object({
-    description: z.string().min(1, 'Line item description is required'),
-    quantity:    z.number().positive('Quantity must be positive'),
-    unit:        z.string().optional(),
-    unitRate:    z.number().min(0, 'Unit rate must be non-negative'),
-  })).optional(),
-  notes:        z.string().max(2000).optional(),
-  validUntil:   z.string().optional(),
-}).passthrough(); // allow extra fields the frontend may send
+  projectName:       z.string().min(1, 'Project name is required').max(200),
+  clientName:        z.string().max(200).optional(),
+  clientEmail:       z.string().email('Invalid client email').optional().or(z.literal('')),
+  clientPhone:       z.string().max(30).optional(),
+  location:          z.string().max(300).optional(),
+  sizeM2:            z.coerce.number().positive('Size (m²) must be a positive number'),
+  condition:         z.enum(['carcass', 'advanced_carcass', 'semi_finished', 'finished']),
+  tier:              z.enum(['basic', 'mid_range', 'premium']),
+  includesFurniture: z.coerce.boolean().optional(),
+  includesKitchen:   z.coerce.boolean().optional(),
+  includesWardrobes: z.coerce.boolean().optional(),
+  scopeAssumptions:  z.string().max(2000).optional(),
+  exclusions:        z.string().max(2000).optional(),
+  validityDays:      z.coerce.number().min(1).max(365).optional(),
+  currency:          z.string().max(10).optional(),
+  status:            z.enum(['draft', 'sent', 'accepted', 'declined']).optional(),
+  taxPercent:        z.coerce.number().min(0).max(100).optional(),
+  overheadPercent:   z.coerce.number().min(0).max(100).optional(),
+  profitPercent:     z.coerce.number().min(0).max(100).optional(),
+});
+const estimateUpdateSchema = estimateSchema.partial();
 
+const invoiceLineItemSchema = z.object({
+  _id:         z.string().optional(),
+  description: z.string().min(1, 'Line item description is required'),
+  quantity:    z.coerce.number().min(0).optional(),
+  unit:        z.string().optional(),
+  unitRate:    z.coerce.number().min(0).optional(),
+  amount:      z.coerce.number().min(0).optional(),
+});
+// Matches the real Invoice model + what Invoices.jsx/InvoiceDetail.jsx
+// actually send -- the previous version required a "title" field that
+// doesn't exist anywhere in the Invoice model or any frontend payload,
+// which meant every invoice-creation request (standalone or linked to an
+// estimate) was rejected with a 400 before reaching the controller. No
+// .passthrough(), so a client-supplied companyId/invoiceNumber/etc. is
+// stripped by default -- closes the update-path mass-assignment gap too.
 const invoiceSchema = z.object({
-  title:        z.string().min(1, 'Title is required').max(200),
-  clientName:   z.string().max(200).optional(),
-  clientEmail:  z.string().email('Invalid client email').optional().or(z.literal('')),
-  lineItems:    z.array(z.object({
-    description: z.string().min(1),
-    quantity:    z.number().positive(),
-    unit:        z.string().optional(),
-    unitRate:    z.number().min(0),
-    amount:      z.number().min(0).optional(),
-  })).optional(),
-  dueDate:      z.string().optional(),
-  notes:        z.string().max(2000).optional(),
-}).passthrough();
+  estimateId:    z.string().optional(),
+  projectId:     z.string().optional(),
+  clientId:      z.string().optional(),
+  projectName:   z.string().max(200).optional(),
+  clientName:    z.string().max(200).optional(),
+  clientEmail:   z.string().email('Invalid client email').optional().or(z.literal('')),
+  clientPhone:   z.string().max(30).optional(),
+  clientAddress: z.string().max(500).optional(),
+  dueDate:       z.coerce.date().optional(),
+  currency:      z.string().max(10).optional(),
+  status:        z.enum(['draft', 'sent', 'paid', 'partially_paid', 'overdue']).optional(),
+  notes:         z.string().max(2000).optional(),
+  bankDetails:   z.string().max(1000).optional(),
+  lineItems:     z.array(invoiceLineItemSchema).optional(),
+  items:         z.array(invoiceLineItemSchema).optional(),
+  vatRate:       z.coerce.number().min(0).max(100).optional(),
+});
 
 // ── BOQ versions / items ──────────────────────────────────────────────────────
 
@@ -202,6 +234,7 @@ module.exports = {
     forgotPassword: forgotPasswordSchema,
     resetPassword: resetPasswordSchema,
     estimate: estimateSchema,
+    estimateUpdate: estimateUpdateSchema,
     invoice: invoiceSchema,
     waitlist: waitlistSchema,
     boqVersion: boqVersionSchema,
