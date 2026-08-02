@@ -315,11 +315,10 @@ Open http://localhost:5173 — you should see the landing page.
 | `AWS_SECRET_ACCESS_KEY` | Optional | AWS credentials for S3 | AWS IAM console |
 | `S3_BUCKET_NAME` | Optional | S3 bucket name for file uploads | Create in AWS S3 console |
 | `S3_PRESIGNED_URL_EXPIRES` | Optional | Seconds before a generated S3 upload URL expires | Plain config, e.g. `3600` |
-| `ENCRYPTION_KEY` | **Critical** | Generic app-level encryption secret | Generate the same way as `JWT_SECRET`, never reuse across environments |
 | `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` / `EMAIL_FROM` | Optional | SMTP config for team-invite and waitlist/admin notification emails | Your email provider's SMTP credentials |
 | `OWNER_EMAIL` | Optional | Receives waitlist-signup and admin notification emails | Your own admin inbox |
 | `UNLOCK_SECRET` | **Critical** if using Book-a-Call | Header secret (`x-unlock-secret`) gating the book-a-call completion endpoint (`authController.completeCall`) | Generate the same way as `JWT_SECRET` |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` / `BOOTSTRAP_ADMIN_EMPLOYEE_ID` | Optional | Creates the first admin account on a fresh deploy | Pick your own — rotate before handing off to a new owner |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` | Optional | Sends WhatsApp team-invite notifications (`utils/whatsapp.js`). No-ops silently with none set. | Twilio Console → Account Info; `TWILIO_WHATSAPP_FROM` is your Twilio WhatsApp-enabled sender number |
 | `SENTRY_DSN` | Optional | Error tracking — reports every 5xx response and unhandled process error (`config/sentry.js`, `middleware/errorHandler.js`). Expected 4xx errors (bad input, auth, not-found) are deliberately not reported — that's normal traffic, not a bug. No-ops with no DSN set. | Sentry dashboard → Project Settings → Client Keys (DSN) |
 
 ### Frontend `.env.local`
