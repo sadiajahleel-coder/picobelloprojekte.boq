@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Logo from '../components/Logo';
 
 const API = import.meta.env.VITE_API_URL || '/api';
@@ -26,16 +26,11 @@ const STATUS_COLOR = {
 
 export default function PayInvoice() {
   const { token } = useParams();
-  const [searchParams] = useSearchParams();
-  const returnRef = searchParams.get('ref');
 
   const [invoice, setInvoice] = useState(null);
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
   const [error, setError] = useState('');
-  const [verified, setVerified] = useState(false);
-  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/invoices/public/${token}`)
@@ -52,45 +47,12 @@ export default function PayInvoice() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // If returning from Paystack, verify the payment
-  useEffect(() => {
-    if (!returnRef) return;
-    setVerifying(true);
-    fetch(`${API}/invoices/verify/${encodeURIComponent(returnRef)}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.paid) {
-          setVerified(true);
-          setInvoice(d.invoice);
-        } else {
-          setError(d.message || 'Payment not confirmed yet. Please wait a moment and refresh.');
-        }
-      })
-      .catch(() => setError('Could not verify payment.'))
-      .finally(() => setVerifying(false));
-  }, [returnRef]);
-
-  const handlePay = async () => {
-    setPaying(true);
-    setError('');
-    try {
-      const r = await fetch(`${API}/invoices/public/${token}/pay`, { method: 'POST' });
-      const d = await r.json();
-      if (!r.ok) { setError(d.message || 'Payment failed.'); return; }
-      window.location.href = d.url;
-    } catch {
-      setError('Could not connect to payment gateway.');
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  if (loading || verifying) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">{verifying ? 'Confirming payment…' : 'Loading invoice…'}</p>
+          <p className="text-gray-500 text-sm">Loading invoice…</p>
         </div>
       </div>
     );
@@ -107,7 +69,7 @@ export default function PayInvoice() {
     );
   }
 
-  const isPaid = verified || invoice?.status === 'paid' || invoice?.balance <= 0;
+  const isPaid = invoice?.status === 'paid' || invoice?.balance <= 0;
   const pct    = invoice?.total > 0 ? Math.min(100, ((invoice.amountPaid || 0) / invoice.total) * 100) : 0;
 
   return (
@@ -272,41 +234,17 @@ export default function PayInvoice() {
           )}
         </div>
 
-        {/* Pay button */}
+        {/* Outstanding balance notice */}
         {!isPaid && invoice?.balance > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-center">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
                 {error}
               </div>
             )}
-
-            {invoice?.currency !== 'NGN' ? (
-              <div className="text-center">
-                <p className="text-sm text-gray-500">Online card payment is available for NGN invoices.</p>
-                <p className="text-sm text-gray-500 mt-1">Please use the bank transfer details above.</p>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500 mb-4 text-center">
-                  Pay securely online via debit or credit card.
-                </p>
-                <button
-                  onClick={handlePay}
-                  disabled={paying}
-                  className="w-full bg-primary-900 text-white py-3.5 rounded-xl font-semibold text-base hover:bg-primary-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {paying ? (
-                    <><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Redirecting…</>
-                  ) : (
-                    <>Pay {invoice.currency} {fmt(invoice.balance)}</>
-                  )}
-                </button>
-                <p className="text-xs text-gray-400 text-center mt-3">
-                  Secured by Paystack &middot; Your card details are never stored here
-                </p>
-              </>
-            )}
+            <p className="text-sm text-gray-500">
+              Please settle the balance above using the bank transfer details on this page, or contact us directly.
+            </p>
           </div>
         )}
 

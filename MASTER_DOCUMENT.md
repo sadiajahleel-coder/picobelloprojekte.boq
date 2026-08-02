@@ -91,7 +91,6 @@ Stateless authentication — the backend doesn't store session state in a databa
 | **Backend API (Render)** | https://pico-bello-boq.onrender.com |
 | **Frontend (Render)** | *(check Render dashboard for static site URL)* |
 | **API Health Check** | https://pico-bello-boq.onrender.com/api/health |
-| **Paystack Webhook URL** | https://pico-bello-boq.onrender.com/api/paystack/webhook |
 
 ### GitHub branch rules:
 
@@ -153,7 +152,7 @@ picobelloprojekte.boq/
 │   │   │   └── database.js           ← MongoDB connection
 │   │   ├── controllers/              ← Business logic (one file per feature)
 │   │   │   ├── authController.js
-│   │   │   ├── invoiceController.js  ← Also contains paystackWebhook, generatePDF
+│   │   │   ├── invoiceController.js  ← Also contains generatePDF
 │   │   │   ├── changeOrderController.js
 │   │   │   ├── expenseController.js
 │   │   │   └── ... (one per route file)
@@ -300,7 +299,7 @@ Open http://localhost:5173 — you should see the landing page.
 | `NODE_ENV` | Yes | `development` or `production` | Type it manually |
 | `MONGODB_URI` | **Critical** | Connection string to your MongoDB Atlas database | MongoDB Atlas → Connect → Drivers → copy the connection string. Replace `<password>` with your DB user password |
 | `JWT_SECRET` | **Critical** | Secret key used to sign auth tokens. Keep this private. | Generate with: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `JWT_EXPIRES_IN` | Yes | How long login tokens last | `7d` = 7 days. Change to `1d` or `30d` as needed |
+| `JWT_EXPIRES_IN` | Yes | How long login tokens last. There is no refresh-token flow, so this is the whole session length — a user is fully logged out when it expires, no silent renewal. | Defaults to `30d`. Shorten if session length is a concern for your threat model, at the cost of more frequent re-logins. |
 | `CLIENT_URL` | Yes | Frontend URL — controls which origins are allowed (CORS) | `http://localhost:5173` for local. `https://your-frontend.onrender.com` for production |
 | `CLOUDINARY_CLOUD_NAME` | Optional | Cloud name for Cloudinary image uploads | Cloudinary dashboard → Cloud Name |
 | `CLOUDINARY_API_KEY` | Optional | API key for Cloudinary | Cloudinary dashboard → API Keys |
@@ -309,7 +308,6 @@ Open http://localhost:5173 — you should see the landing page.
 | `VAPID_PUBLIC_KEY` | Optional | For browser push notifications | Run: `npx web-push generate-vapid-keys` |
 | `VAPID_PRIVATE_KEY` | Optional | For browser push notifications | Same command as above |
 | `VAPID_EMAIL` | Optional | Email in VAPID key registration | Your admin email, prefixed with `mailto:` e.g. `mailto:admin@pico.com` |
-| `PAYSTACK_SECRET_KEY` | Optional | For Paystack online payment webhook | Paystack Dashboard → Settings → API Keys → Secret Key |
 | `ANTHROPIC_API_KEY` | Optional | Enables AI-generated client updates in the Site Report Summariser (falls back to plain text without it) and the AI BOQ Drafter (which has no fallback — returns "not configured" without it) | console.anthropic.com → API Keys |
 | `ANTHROPIC_MODEL` | Optional | Overrides the model used for summaries | Defaults to `claude-haiku-4-5-20251001` if unset |
 | `AWS_REGION` | Optional | AWS region for S3 file storage | e.g. `us-east-1` |
@@ -317,7 +315,6 @@ Open http://localhost:5173 — you should see the landing page.
 | `AWS_SECRET_ACCESS_KEY` | Optional | AWS credentials for S3 | AWS IAM console |
 | `S3_BUCKET_NAME` | Optional | S3 bucket name for file uploads | Create in AWS S3 console |
 | `S3_PRESIGNED_URL_EXPIRES` | Optional | Seconds before a generated S3 upload URL expires | Plain config, e.g. `3600` |
-| `JWT_REFRESH_SECRET` / `JWT_REFRESH_EXPIRES_IN` | Not currently used | Generated on every deploy but no refresh-token flow reads them — see §15 | Dead config, safe to leave as-is or remove |
 | `ENCRYPTION_KEY` | **Critical** | Generic app-level encryption secret | Generate the same way as `JWT_SECRET`, never reuse across environments |
 | `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` / `EMAIL_FROM` | Optional | SMTP config for team-invite and waitlist/admin notification emails | Your email provider's SMTP credentials |
 | `OWNER_EMAIL` | Optional | Receives waitlist-signup and admin notification emails | Your own admin inbox |
@@ -340,12 +337,11 @@ Log in to https://dashboard.render.com → select your **backend service** → E
 NODE_ENV=production
 MONGODB_URI=<your atlas URI>
 JWT_SECRET=<generate a strong one>
-JWT_EXPIRES_IN=7d
+JWT_EXPIRES_IN=30d
 CLIENT_URL=https://<your-frontend>.onrender.com
 CLOUDINARY_CLOUD_NAME=<if using>
 CLOUDINARY_API_KEY=<if using>
 CLOUDINARY_API_SECRET=<if using>
-PAYSTACK_SECRET_KEY=<from Paystack dashboard>
 ```
 
 ---
@@ -387,14 +383,7 @@ PAYSTACK_SECRET_KEY=<from Paystack dashboard>
 - **Setup:** Run `npx web-push generate-vapid-keys` — copy the two keys to your `.env`
 - **Currently:** Keys need to be generated and set
 
-### 6. Paystack
-- **What:** Nigerian online payment gateway — clients can pay invoices online
-- **Why:** Dominant payment processor in Nigeria; supports bank transfer, card, USSD
-- **Setup:** https://paystack.com → Register → Settings → API Keys
-- **Webhook:** Must be configured at `https://pico-bello-boq.onrender.com/api/paystack/webhook` with event `charge.success`
-- **Currently:** Backend webhook endpoint is built and deployed; Paystack dashboard config pending
-
-### 7. Nodemailer / SMTP
+### 6. Nodemailer / SMTP
 - **What:** Sends emails (password reset, invoice delivery, invite links)
 - **Why:** Built-in email delivery without a third-party service
 - **Note:** Currently email sending may not be fully configured — review `services/email.js`
@@ -526,7 +515,7 @@ All routes are available at both `/api/v1/...` and `/api/...` (for backwards com
 | DELETE | `/invoices/:id/payments/:paymentId` | 📋 | Remove a payment |
 | POST | `/invoices/:id/mark-paid` | 📋 | Mark invoice as fully paid (records balance as payment) |
 | GET | `/invoices/:id/pdf` | 🔒 | Download invoice as PDF |
-| POST | `/paystack/webhook` | None | Paystack payment webhook (raw body) |
+| GET | `/invoices/public/:token` | None | Public invoice view (client-facing link, no auth) — shows the invoice and the company's bank transfer details; no online payment gateway |
 
 ### Contacts (`/api/contacts`)
 | Method | Path | Who | What |
@@ -737,8 +726,6 @@ As of the last build session (June 2026):
 | Mobile responsive (card views) | ✅ Working |
 | In-app notifications | ✅ Working |
 | Push notifications (browser) | ⚠️ VAPID keys needed |
-| Paystack webhook endpoint | ✅ Deployed |
-| Paystack dashboard config | ❌ Not configured yet |
 | File uploads (S3) | ⚠️ AWS keys needed |
 | Cloudinary uploads | ⚠️ API keys needed |
 | Backend deployed on Render | ✅ Live |
@@ -762,27 +749,17 @@ AWS_REGION=us-east-1
 S3_BUCKET_NAME=pico-bello-uploads
 ```
 
-### 2. Paystack Online Payments — Webhook Not Configured
-**Problem:** The backend endpoint exists but Paystack doesn't know where to send payment events.
-**Effect:** Clients cannot pay invoices online.
-**Fix:**
-1. Log in to https://paystack.com/business/settings
-2. Go to **API Keys & Webhooks**
-3. Set webhook URL to: `https://pico-bello-boq.onrender.com/api/paystack/webhook`
-4. Enable event: `charge.success`
-5. Add `PAYSTACK_SECRET_KEY` to Render env vars
-
-### 3. Browser Push Notifications — Keys Not Generated
+### 2. Browser Push Notifications — Keys Not Generated
 **Problem:** VAPID keys are not in the environment variables.
 **Effect:** Push notifications don't work.
 **Fix:** Run `npx web-push generate-vapid-keys` and add `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` to Render env vars.
 
-### 4. Company Logo on Invoice PDF
+### 3. Company Logo on Invoice PDF
 **Problem:** The invoice PDF shows "PICO BELLO / PROJEKTE" as text instead of the real logo.
 **Effect:** PDFs don't show the company logo image.
 **Fix:** Place the real logo PNG at `frontend/public/logo.png` — or better, upload via Company Settings once Cloudinary is configured.
 
-### 5. Render Free Tier Cold Starts
+### 4. Render Free Tier Cold Starts
 **Problem:** The backend may take 30–60 seconds to respond after a period of inactivity.
 **Effect:** First request after idle period is slow.
 **Fix:** Upgrade to Render Starter paid plan ($7/month) which keeps the service always running.
@@ -901,23 +878,21 @@ User's real Historical Projects file confirmed headers matched fine (they used t
 These were identified during the build but not yet implemented. Prioritized by impact:
 
 ### High Priority (do these first)
-1. **Configure Paystack** — Set webhook URL in Paystack dashboard, add secret key to Render. This enables online payments.
-2. **Configure VAPID** — Generate keys, add to Render. This enables push notifications.
-3. **Client email on invoice** — Make sure every invoice has `clientEmail` populated so Paystack fallback works.
+1. **Configure VAPID** — Generate keys, add to Render. This enables push notifications.
 
 ### Medium Priority
-4. **Invoice due date alerts** — Automated job that checks for overdue invoices daily and sends email/notification
-5. **Project progress percentage** — Show % complete on the project card in the Projects list
-6. **Form validation feedback** — Inline field-level errors (e.g. "Email is invalid") instead of just a generic error message at the top
-7. **Pagination** — Invoice and expense lists with many records should paginate (currently loads all)
-8. **Audit log viewer** — Admin page to view the audit log (model exists but no UI)
-9. **Client dashboard** — Summary view for client portal showing project health at a glance
+2. **Invoice due date alerts** — Automated job that checks for overdue invoices daily and sends email/notification
+3. **Project progress percentage** — Show % complete on the project card in the Projects list
+4. **Form validation feedback** — Inline field-level errors (e.g. "Email is invalid") instead of just a generic error message at the top
+5. **Pagination** — Invoice and expense lists with many records should paginate (currently loads all)
+6. **Audit log viewer** — Admin page to view the audit log (model exists but no UI)
+7. **Client dashboard** — Summary view for client portal showing project health at a glance
 
 ### Lower Priority
-10. **Rate limiting per user** — Currently rate-limited per IP; add per-authenticated-user limits
-11. **File upload size limits** — Add max file size validation for receipt photos
-12. **Keyboard accessibility** — Tab order and ARIA labels on modals
-13. **Dark mode** — ThemeContext exists but dark mode styles not fully implemented
+8. **Rate limiting per user** — Currently rate-limited per IP; add per-authenticated-user limits
+9. **File upload size limits** — Add max file size validation for receipt photos
+10. **Keyboard accessibility** — Tab order and ARIA labels on modals
+11. **Dark mode** — ThemeContext exists but dark mode styles not fully implemented
 
 ---
 
