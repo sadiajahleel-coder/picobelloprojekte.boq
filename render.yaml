@@ -41,6 +41,8 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: ENCRYPTION_KEY
         generateValue: true
       - key: FRONTEND_URL

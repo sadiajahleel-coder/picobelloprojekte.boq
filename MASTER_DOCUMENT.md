@@ -310,6 +310,8 @@ Open http://localhost:5173 — you should see the landing page.
 | `VAPID_PRIVATE_KEY` | Optional | For browser push notifications | Same command as above |
 | `VAPID_EMAIL` | Optional | Email in VAPID key registration | Your admin email, prefixed with `mailto:` e.g. `mailto:admin@pico.com` |
 | `PAYSTACK_SECRET_KEY` | Optional | For Paystack online payment webhook | Paystack Dashboard → Settings → API Keys → Secret Key |
+| `ANTHROPIC_API_KEY` | Optional | Enables AI-generated client updates in the Site Report Summariser. Without it, the feature falls back to a plain-text summary of what was logged — never breaks, just less polished | console.anthropic.com → API Keys |
+| `ANTHROPIC_MODEL` | Optional | Overrides the model used for summaries | Defaults to `claude-haiku-4-5-20251001` if unset |
 | `AWS_REGION` | Optional | AWS region for S3 file storage | e.g. `us-east-1` |
 | `AWS_ACCESS_KEY_ID` | Optional | AWS credentials for S3 | AWS IAM console |
 | `AWS_SECRET_ACCESS_KEY` | Optional | AWS credentials for S3 | AWS IAM console |

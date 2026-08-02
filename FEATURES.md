@@ -100,6 +100,18 @@ platform-owner only, not customer-facing).
 | Invoice crash bug fix + client portal project scoping | live | `bff2643` | |
 | `documentAggregator` hardened against unvalidated caller | live | `5bc2cad` | |
 
+## Cash Flow Predictor
+
+| Feature | Status | Introduced | Notes |
+|---|---|---|---|
+| High-risk client flagging by payment history | live | `feature/cash-flow-predictor` | Rule-based (no external API), computed live from invoice payment history — same approach as BOQ Reviewer/Rate Alerter. Scores clients by max/avg days late and on-time rate, not just current balance. New "Cash Flow Risk" tab on Analytics. |
+
+## Site Report Summariser
+
+| Feature | Status | Introduced | Notes |
+|---|---|---|---|
+| One-paragraph client update generated from site reports | partial | `feature/site-report-summariser` | Needs `ANTHROPIC_API_KEY` configured to produce AI-generated prose — falls back to a plain-text extractive summary otherwise, never fails outright. "Client Update" button on Site Reports page. Only summarizes fields the SiteReport schema actually persists — see the schema gap noted below. |
+
 ## Programme of Works
 
 | Feature | Status | Introduced |
@@ -133,3 +145,19 @@ platform-owner only, not customer-facing).
 - Paystack online payments — webhook not configured live
 - Browser push notifications — VAPID keys not generated
 - Company logo on invoice PDF — pending asset
+- Site Report Summariser's AI mode — needs `ANTHROPIC_API_KEY` set in production; the extractive fallback works today with no configuration
+
+## Known schema gap (found while building the Summariser, not fixed here)
+
+`SiteReport`'s Mongoose schema only defines the "daily" report fields
+(description, workCarriedOut, materialsUsed, problems, actionsRequired,
+etc.). The frontend form's weekly/incident/snag/delivery/inspection
+sections collect additional fields — `weeklyWorkPlanned`, `weeklyMilestones`,
+`incidentDescription`, `snagItems`, `deliveryItems`, `inspectionChecklist`,
+and others — that aren't in the schema. Mongoose's default strict mode
+silently drops unknown fields on save, so none of that data ever reaches
+MongoDB; it's not a crash, just quietly lost, which is exactly the class of
+bug Phase 8's silent-failure audit was meant to catch. Worth a follow-up:
+either add those fields to the schema (with a migration for anything only
+recoverable from application logs) or, if some of those report types were
+never really in use, drop the dead template options from the frontend.
