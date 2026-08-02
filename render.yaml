@@ -39,16 +39,6 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: EBAY_APP_ID
-        sync: false
-      - key: EBAY_CERT_ID
-        sync: false
-      - key: EBAY_DEV_ID
-        sync: false
-      - key: EBAY_REDIRECT_URI
-        sync: false
-      - key: EBAY_SANDBOX
-        value: "false"
       - key: SENTRY_DSN
         sync: false
       - key: ENCRYPTION_KEY
