@@ -25,4 +25,15 @@ const uploadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { authLimiter, apiLimiter, uploadLimiter };
+// Tighter than the generic apiLimiter — these endpoints (AI BOQ Drafter,
+// Site Report Summariser) call a paid external API per request, so the
+// blanket 120/min limit is far too generous for real cost exposure.
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: { error: 'AI request limit reached. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = { authLimiter, apiLimiter, uploadLimiter, aiLimiter };

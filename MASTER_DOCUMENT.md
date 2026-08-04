@@ -315,11 +315,10 @@ Open http://localhost:5173 — you should see the landing page.
 | `AWS_SECRET_ACCESS_KEY` | Optional | AWS credentials for S3 | AWS IAM console |
 | `S3_BUCKET_NAME` | Optional | S3 bucket name for file uploads | Create in AWS S3 console |
 | `S3_PRESIGNED_URL_EXPIRES` | Optional | Seconds before a generated S3 upload URL expires | Plain config, e.g. `3600` |
-| `ENCRYPTION_KEY` | **Critical** | Generic app-level encryption secret | Generate the same way as `JWT_SECRET`, never reuse across environments |
 | `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` / `EMAIL_FROM` | Optional | SMTP config for team-invite and waitlist/admin notification emails | Your email provider's SMTP credentials |
 | `OWNER_EMAIL` | Optional | Receives waitlist-signup and admin notification emails | Your own admin inbox |
 | `UNLOCK_SECRET` | **Critical** if using Book-a-Call | Header secret (`x-unlock-secret`) gating the book-a-call completion endpoint (`authController.completeCall`) | Generate the same way as `JWT_SECRET` |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` / `BOOTSTRAP_ADMIN_EMPLOYEE_ID` | Optional | Creates the first admin account on a fresh deploy | Pick your own — rotate before handing off to a new owner |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` | Optional | Sends WhatsApp team-invite notifications (`utils/whatsapp.js`). No-ops silently with none set. | Twilio Console → Account Info; `TWILIO_WHATSAPP_FROM` is your Twilio WhatsApp-enabled sender number |
 | `SENTRY_DSN` | Optional | Error tracking — reports every 5xx response and unhandled process error (`config/sentry.js`, `middleware/errorHandler.js`). Expected 4xx errors (bad input, auth, not-found) are deliberately not reported — that's normal traffic, not a bug. No-ops with no DSN set. | Sentry dashboard → Project Settings → Client Keys (DSN) |
 
 ### Frontend `.env.local`
@@ -763,6 +762,11 @@ S3_BUCKET_NAME=pico-bello-uploads
 **Problem:** The backend may take 30–60 seconds to respond after a period of inactivity.
 **Effect:** First request after idle period is slow.
 **Fix:** Upgrade to Render Starter paid plan ($7/month) which keeps the service always running.
+
+### 5. `xlsx` (SheetJS) — Unpatched Advisories on the npm Build
+**Problem:** `frontend/package.json` pins `xlsx: ^0.18.5`. SheetJS has stated the npm-registry build is frozen at 0.18.5 and the fixes for known prototype-pollution (GHSA-4r6h-8v6p-xvw6) and ReDoS (GHSA-5pgg-2g8v-p4x9) advisories are only distributed from their own CDN (cdn.sheetjs.com), not npm. Confirmed still current: `npm view xlsx version` / the npm registry's `latest` dist-tag is still `0.18.5`.
+**Effect:** `frontend/src/components/ExcelImport.jsx` calls `XLSX.read()` on user-uploaded `.xlsx`/`.xls` files (BOQ/invoice/etc. bulk import). This runs entirely client-side in the importing user's browser — it doesn't expose the server or other users — but a malicious spreadsheet handed to a staff member (e.g. by a client) could still exploit these in that person's session.
+**Fix (not applied here — this session's outbound network couldn't reach cdn.sheetjs.com/docs.sheetjs.com to verify the current safe version/URL, and guessing one risks breaking `npm install` entirely):** Visit https://cdn.sheetjs.com/ yourself, get the current tarball URL for the latest release, and point `frontend/package.json`'s `xlsx` dependency at it (SheetJS's documented install method — a manual `"xlsx": "https://cdn.sheetjs.com/xlsx-<version>/xlsx-<version>.tgz"` line in `package.json`, not a plain semver range), then run `npm install` and re-test the import/export flows in `ExcelImport.jsx`/`MasterImport.jsx` before deploying. Alternative: migrate off `xlsx` entirely to a maintained library (e.g. `exceljs`) — bigger change, higher regression risk, but sidesteps the frozen-npm-build problem for good.
 
 ---
 

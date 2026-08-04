@@ -2,15 +2,21 @@ const Approval = require('../models/Approval');
 const BoqItem = require('../models/BoqItem');
 const BoqVersion = require('../models/BoqVersion');
 const Notification = require('../models/Notification');
+const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
 
 // ── Client: get approvals for a version ──────────────────────────────────────────────
 const getApprovals = async (req, res) => {
-  const filter = {};
+  const filter = { companyId: req.user.companyId };
   if (req.query.projectId) filter.projectId = req.query.projectId;
   if (req.query.boqVersionId) filter.boqVersionId = req.query.boqVersionId;
 
-  // Clients only see their own approvals
-  if (req.user.role === 'client') filter.clientId = req.user._id;
+  if (req.user.role === 'client') {
+    // Clients only see their own approvals
+    filter.clientId = req.user._id;
+  } else {
+    const allowedIds = await getAllowedProjectIds(req.user);
+    if (allowedIds !== null && !scopeToProjects(filter, allowedIds)) return res.json({ approvals: [] });
+  }
 
   const approvals = await Approval.find(filter)
     .populate('boqItemId', 'item unit quantity baseCost options')
@@ -28,7 +34,10 @@ const submitItemDecision = async (req, res) => {
     return res.status(400).json({ message: 'Status must be approved or rejected' });
   }
 
-  const item = await BoqItem.findById(boqItemId);
+  const version = await BoqVersion.findOne({ _id: boqVersionId, companyId: req.user.companyId });
+  if (!version) return res.status(404).json({ message: 'BOQ version not found' });
+
+  const item = await BoqItem.findOne({ _id: boqItemId, versionId: boqVersionId });
   if (!item) return res.status(404).json({ message: 'BOQ item not found' });
 
   // selectedTier must match an existing option if provided
@@ -40,6 +49,7 @@ const submitItemDecision = async (req, res) => {
   const approval = await Approval.findOneAndUpdate(
     { boqVersionId, boqItemId, clientId: req.user._id },
     {
+      companyId: req.user.companyId,
       projectId,
       boqVersionId,
       boqItemId,
@@ -65,12 +75,13 @@ const submitVersionDecision = async (req, res) => {
     return res.status(400).json({ message: 'Status must be approved or rejected' });
   }
 
-  const version = await BoqVersion.findById(boqVersionId);
+  const version = await BoqVersion.findOne({ _id: boqVersionId, companyId: req.user.companyId });
   if (!version) return res.status(404).json({ message: 'BOQ version not found' });
 
   const approval = await Approval.findOneAndUpdate(
     { boqVersionId, boqItemId: null, clientId: req.user._id, type: 'version' },
     {
+      companyId: req.user.companyId,
       projectId,
       boqVersionId,
       boqItemId: null,

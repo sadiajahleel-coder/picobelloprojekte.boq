@@ -6,6 +6,7 @@ const ChangeOrder = require('../models/ChangeOrder');
 const MaterialPrice = require('../models/MaterialPrice');
 const { getAllowedProjectIds } = require('../utils/clientScope');
 const { computeClientRisk } = require('../utils/cashFlowPredictor');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 function fmt2(n) { return parseFloat(Number(n || 0).toFixed(2)); }
 
@@ -168,7 +169,7 @@ const getSupplierPriceHistory = async (req, res) => {
   const material = req.query.material || '';
 
   const match = { companyId: req.user.companyId };
-  if (material) match.material = { $regex: material, $options: 'i' };
+  if (material) match.material = { $regex: escapeRegex(material), $options: 'i' };
 
   const records = await MaterialPrice.find(match)
     .sort({ material: 1, createdAt: 1 })

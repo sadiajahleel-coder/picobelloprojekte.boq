@@ -88,10 +88,16 @@ const addItem = async (req, res) => {
 };
 
 const updateItem = async (req, res) => {
-  const item = await BoqItem.findById(req.params.itemId);
+  const version = await BoqVersion.findOne({ _id: req.params.id, companyId: req.user.companyId });
+  if (!version) return res.status(404).json({ message: 'BOQ version not found' });
+
+  const item = await BoqItem.findOne({ _id: req.params.itemId, versionId: req.params.id });
   if (!item) return res.status(404).json({ message: 'Item not found' });
 
-  Object.assign(item, req.body);
+  // versionId is excluded so a request body can't relocate the item into a
+  // different (potentially another company's) BOQ version.
+  const { versionId, ...updates } = req.body;
+  Object.assign(item, updates);
   await item.save();
   await recalculateVersionTotal(item.versionId);
 
@@ -99,7 +105,10 @@ const updateItem = async (req, res) => {
 };
 
 const deleteItem = async (req, res) => {
-  const item = await BoqItem.findByIdAndDelete(req.params.itemId);
+  const version = await BoqVersion.findOne({ _id: req.params.id, companyId: req.user.companyId });
+  if (!version) return res.status(404).json({ message: 'BOQ version not found' });
+
+  const item = await BoqItem.findOneAndDelete({ _id: req.params.itemId, versionId: req.params.id });
   if (!item) return res.status(404).json({ message: 'Item not found' });
 
   await recalculateVersionTotal(item.versionId);

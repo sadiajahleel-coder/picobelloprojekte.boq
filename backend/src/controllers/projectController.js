@@ -37,9 +37,10 @@ const createProject = async (req, res) => {
 };
 
 const updateProject = async (req, res) => {
+  const { companyId, ...updates } = req.body;
   const project = await Project.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: Date.now() },
+    { ...updates, updatedAt: Date.now() },
     { new: true, runValidators: true }
   );
   if (!project) return res.status(404).json({ message: 'Project not found' });

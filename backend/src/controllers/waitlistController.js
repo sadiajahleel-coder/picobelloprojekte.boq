@@ -1,12 +1,6 @@
 const WaitlistSignup = require('../models/WaitlistSignup');
 const { sendWaitlistNotification } = require('../utils/email');
-const { SUPER_EMAILS } = require('./authController');
 const logger = require('../utils/logger');
-
-// Waitlist signups aren't scoped to any one company, so this is platform-owner
-// territory (same as ownerDashboard) — plus whoever receives the notification
-// email below, since they're the ones who'll actually be doing the launch outreach.
-const OWNER_EMAILS = [...SUPER_EMAILS, process.env.OWNER_EMAIL || 'tidan1023@gmail.com'];
 
 const ROLE_LABELS = {
   quantity_surveyor: 'Quantity Surveyor',
@@ -42,10 +36,8 @@ const create = async (req, res) => {
 };
 
 // Platform owner only — this list isn't scoped to any one company.
+// Authorization is enforced by requireOwnerEmail at the route level.
 const list = async (req, res) => {
-  if (!OWNER_EMAILS.includes(req.user.email)) {
-    return res.status(403).json({ message: 'Not authorised.' });
-  }
   const signups = await WaitlistSignup.find().sort({ createdAt: -1 }).lean();
   res.json({ signups, roleLabels: ROLE_LABELS });
 };

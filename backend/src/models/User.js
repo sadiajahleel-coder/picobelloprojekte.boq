@@ -45,6 +45,10 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpires;
+  delete obj.inviteToken;
+  delete obj.inviteTokenExpires;
   return obj;
 };
 

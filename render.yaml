@@ -39,15 +39,13 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: ENCRYPTION_KEY
-        generateValue: true
       - key: FRONTEND_URL
         sync: false
-      - key: BOOTSTRAP_ADMIN_EMAIL
+      - key: TWILIO_ACCOUNT_SID
         sync: false
-      - key: BOOTSTRAP_ADMIN_PASSWORD
+      - key: TWILIO_AUTH_TOKEN
         sync: false
-      - key: BOOTSTRAP_ADMIN_EMPLOYEE_ID
+      - key: TWILIO_WHATSAPP_FROM
         sync: false
       - key: EMAIL_HOST
         sync: false
