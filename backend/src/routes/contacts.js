@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 const Contact = require('../models/Contact');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 router.use(authenticate);
 
@@ -15,7 +16,7 @@ router.get('/', async (req, res) => {
   if (req.query.projectId) filter.projectIds = req.query.projectId;
   if (req.query.category) filter.category = req.query.category;
   if (req.query.search) {
-    const q = new RegExp(req.query.search, 'i');
+    const q = new RegExp(escapeRegex(req.query.search), 'i');
     filter.$or = [{ name: q }, { company: q }, { email: q }, { phone: q }, { role: q }];
   }
   const contacts = await Contact.find(filter)
@@ -41,9 +42,10 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
+  const { companyId, ...updates } = req.body;
   const contact = await Contact.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: new Date() },
+    { ...updates, updatedAt: new Date() },
     { new: true }
   );
   if (!contact) return res.status(404).json({ message: 'Contact not found' });

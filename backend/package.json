@@ -2,11 +2,12 @@
   "name": "pico-bello-boq-backend",
   "version": "1.0.0",
   "description": "Pico Bello Projekte BOQ System — API Server",
+  "license": "UNLICENSED",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node --test src/utils/*.test.js src/middleware/*.test.js"
+    "test": "node --test src/utils/*.test.js src/middleware/*.test.js src/controllers/*.test.js src/models/*.test.js src/config/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

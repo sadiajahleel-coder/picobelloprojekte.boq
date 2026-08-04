@@ -1,8 +1,9 @@
 const ArtisanPrice = require('../models/ArtisanPrice');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
-  if (req.query.location) filter.location = new RegExp(req.query.location, 'i');
+  if (req.query.location) filter.location = new RegExp(escapeRegex(req.query.location), 'i');
 
   const prices = await ArtisanPrice.find(filter)
     .populate('createdBy', 'name')
@@ -17,9 +18,10 @@ const create = async (req, res) => {
 };
 
 const update = async (req, res) => {
+  const { companyId, ...updates } = req.body;
   const price = await ArtisanPrice.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: Date.now() },
+    { ...updates, updatedAt: Date.now() },
     { new: true, runValidators: true }
   );
   if (!price) return res.status(404).json({ message: 'Artisan rate not found' });

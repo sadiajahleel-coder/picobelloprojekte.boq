@@ -1,6 +1,7 @@
 const QsPrice = require('../models/QsPrice');
 const ArtisanPrice = require('../models/ArtisanPrice');
 const MaterialPrice = require('../models/MaterialPrice');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 const getIntelligence = async (req, res) => {
   const { query, type } = req.query;
@@ -9,7 +10,7 @@ const getIntelligence = async (req, res) => {
     return res.status(400).json({ message: 'Search query is required' });
   }
 
-  const regex = new RegExp(query, 'i');
+  const regex = new RegExp(escapeRegex(query), 'i');
   let results = [];
 
   if (!type || type === 'qs') {

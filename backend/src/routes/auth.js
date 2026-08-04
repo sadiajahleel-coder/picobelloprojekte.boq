@@ -11,8 +11,8 @@ const {
 } = require('../controllers/authController');
 const { multerMemoryConfig } = require('../utils/s3Upload');
 const upload = multerMemoryConfig();
-const { authenticate, authorize } = require('../middleware/auth');
-const { authLimiter }           = require('../middleware/rateLimiter');
+const { authenticate, authorize, requireSuperEmail } = require('../middleware/auth');
+const { authLimiter, uploadLimiter } = require('../middleware/rateLimiter');
 const { zodValidate, schemas }  = require('../middleware/zodValidate');
 
 router.post('/register',
@@ -52,14 +52,14 @@ router.delete('/team/:id',     authenticate, authorize('admin'), removeMember);
 
 router.post('/accept-invite/:token', acceptInvite);
 router.post('/request-onboarding', authLimiter, requestOnboarding);
-router.patch('/me/profile', authenticate, upload.single('avatar'), updateProfile);
+router.patch('/me/profile', authenticate, uploadLimiter, upload.single('avatar'), updateProfile);
 router.patch('/me/password', authenticate, changePassword);
 router.patch('/me/onboarded',           authenticate, markOnboarded);
 router.patch('/me/book-call',           authenticate, bookCall);
 router.patch('/team/:id/complete-call', authenticate, authorize('admin'), completeCall);
 router.delete('/me', authenticate, deleteAccount);
 
-router.get('/owner/dashboard',        authenticate, ownerDashboard);
-router.patch('/owner/users/:id/plan', authenticate, ownerSetPlan);
+router.get('/owner/dashboard',        authenticate, requireSuperEmail, ownerDashboard);
+router.patch('/owner/users/:id/plan', authenticate, requireSuperEmail, ownerSetPlan);
 
 module.exports = router;

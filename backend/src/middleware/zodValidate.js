@@ -54,35 +54,177 @@ const resetPasswordSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+// projectName/sizeM2/condition/tier match Estimator.jsx's required step-0/1/2
+// fields; everything else mirrors the real Estimate model fields the
+// EstimateDetail.jsx edit form actually sends. No .passthrough() -- unknown
+// keys (like a client-supplied companyId) are stripped by default, which is
+// what closes the mass-assignment gap on the update path.
 const estimateSchema = z.object({
-  projectName:  z.string().min(1, 'Project name is required').max(200),
-  clientName:   z.string().max(200).optional(),
-  clientEmail:  z.string().email('Invalid client email').optional().or(z.literal('')),
-  description:  z.string().max(2000).optional(),
-  lineItems:    z.array(z.object({
-    description: z.string().min(1, 'Line item description is required'),
-    quantity:    z.number().positive('Quantity must be positive'),
-    unit:        z.string().optional(),
-    unitRate:    z.number().min(0, 'Unit rate must be non-negative'),
-  })).optional(),
-  notes:        z.string().max(2000).optional(),
-  validUntil:   z.string().optional(),
-}).passthrough(); // allow extra fields the frontend may send
+  projectName:       z.string().min(1, 'Project name is required').max(200),
+  clientName:        z.string().max(200).optional(),
+  clientEmail:       z.string().email('Invalid client email').optional().or(z.literal('')),
+  clientPhone:       z.string().max(30).optional(),
+  location:          z.string().max(300).optional(),
+  sizeM2:            z.coerce.number().positive('Size (m²) must be a positive number'),
+  condition:         z.enum(['carcass', 'advanced_carcass', 'semi_finished', 'finished']),
+  tier:              z.enum(['basic', 'mid_range', 'premium']),
+  includesFurniture: z.coerce.boolean().optional(),
+  includesKitchen:   z.coerce.boolean().optional(),
+  includesWardrobes: z.coerce.boolean().optional(),
+  scopeAssumptions:  z.string().max(2000).optional(),
+  exclusions:        z.string().max(2000).optional(),
+  validityDays:      z.coerce.number().min(1).max(365).optional(),
+  currency:          z.string().max(10).optional(),
+  status:            z.enum(['draft', 'sent', 'accepted', 'declined']).optional(),
+  taxPercent:        z.coerce.number().min(0).max(100).optional(),
+  overheadPercent:   z.coerce.number().min(0).max(100).optional(),
+  profitPercent:     z.coerce.number().min(0).max(100).optional(),
+});
+const estimateUpdateSchema = estimateSchema.partial();
 
+const invoiceLineItemSchema = z.object({
+  _id:         z.string().optional(),
+  description: z.string().min(1, 'Line item description is required'),
+  quantity:    z.coerce.number().min(0).optional(),
+  unit:        z.string().optional(),
+  unitRate:    z.coerce.number().min(0).optional(),
+  amount:      z.coerce.number().min(0).optional(),
+});
+// Matches the real Invoice model + what Invoices.jsx/InvoiceDetail.jsx
+// actually send -- the previous version required a "title" field that
+// doesn't exist anywhere in the Invoice model or any frontend payload,
+// which meant every invoice-creation request (standalone or linked to an
+// estimate) was rejected with a 400 before reaching the controller. No
+// .passthrough(), so a client-supplied companyId/invoiceNumber/etc. is
+// stripped by default -- closes the update-path mass-assignment gap too.
 const invoiceSchema = z.object({
-  title:        z.string().min(1, 'Title is required').max(200),
-  clientName:   z.string().max(200).optional(),
-  clientEmail:  z.string().email('Invalid client email').optional().or(z.literal('')),
-  lineItems:    z.array(z.object({
-    description: z.string().min(1),
-    quantity:    z.number().positive(),
-    unit:        z.string().optional(),
-    unitRate:    z.number().min(0),
-    amount:      z.number().min(0).optional(),
-  })).optional(),
-  dueDate:      z.string().optional(),
-  notes:        z.string().max(2000).optional(),
-}).passthrough();
+  estimateId:    z.string().optional(),
+  projectId:     z.string().optional(),
+  clientId:      z.string().optional(),
+  projectName:   z.string().max(200).optional(),
+  clientName:    z.string().max(200).optional(),
+  clientEmail:   z.string().email('Invalid client email').optional().or(z.literal('')),
+  clientPhone:   z.string().max(30).optional(),
+  clientAddress: z.string().max(500).optional(),
+  dueDate:       z.coerce.date().optional(),
+  currency:      z.string().max(10).optional(),
+  status:        z.enum(['draft', 'sent', 'paid', 'partially_paid', 'overdue']).optional(),
+  notes:         z.string().max(2000).optional(),
+  bankDetails:   z.string().max(1000).optional(),
+  lineItems:     z.array(invoiceLineItemSchema).optional(),
+  items:         z.array(invoiceLineItemSchema).optional(),
+  vatRate:       z.coerce.number().min(0).max(100).optional(),
+});
+
+// ── BOQ versions / items ──────────────────────────────────────────────────────
+
+const boqVersionSchema = z.object({
+  name:        z.string().trim().min(1, 'Name is required').max(200),
+  description: z.string().max(2000).optional(),
+  status:      z.enum(['draft', 'final', 'approved']).optional(),
+  currency:    z.string().max(10).optional(),
+});
+const boqVersionUpdateSchema = boqVersionSchema.partial();
+
+const boqItemOptionSchema = z.object({
+  tier:     z.enum(['basic', 'standard', 'premium']).optional(),
+  label:    z.string().max(200).optional(),
+  baseCost: z.coerce.number().min(0).optional(),
+});
+const boqItemSchema = z.object({
+  item:            z.string().trim().min(1, 'Item name is required').max(300),
+  description:     z.string().max(2000).optional(),
+  unit:            z.string().trim().min(1, 'Unit is required').max(50),
+  quantity:        z.coerce.number().min(0, 'Quantity must be non-negative'),
+  baseCost:        z.coerce.number().min(0, 'Base cost must be non-negative'),
+  overheadPercent: z.coerce.number().min(0).max(1000).optional(),
+  profitPercent:   z.coerce.number().min(0).max(1000).optional(),
+  options:         z.array(boqItemOptionSchema).max(10).optional(),
+});
+const boqItemUpdateSchema = boqItemSchema.partial();
+
+// ── Change orders ──────────────────────────────────────────────────────────────
+
+const changeOrderSchema = z.object({
+  projectId:    z.string().min(1, 'projectId is required'),
+  boqVersionId: z.string().optional(),
+  title:        z.string().trim().min(1, 'Title is required').max(300),
+  description:  z.string().max(2000).optional(),
+  reason:       z.string().max(2000).optional(),
+  originalCost: z.coerce.number().min(0, 'Original cost must be non-negative'),
+  newCost:      z.coerce.number().min(0, 'New cost must be non-negative'),
+});
+const changeOrderUpdateSchema = z.object({
+  title:        z.string().trim().min(1).max(300).optional(),
+  description:  z.string().max(2000).optional(),
+  reason:       z.string().max(2000).optional(),
+  originalCost: z.coerce.number().min(0).optional(),
+  newCost:      z.coerce.number().min(0).optional(),
+});
+
+// ── Programme / weekly reports ──────────────────────────────────────────────────
+
+const programmeActivitySchema = z.object({
+  name:            z.string().trim().min(1).max(200),
+  startWeek:       z.coerce.number().min(0).optional(),
+  durationWeeks:   z.coerce.number().min(1).optional(),
+  percentComplete: z.coerce.number().min(0).max(100).optional(),
+});
+const programmePhaseSchema = z.object({
+  name:       z.string().trim().min(1).max(200),
+  color:      z.string().max(20).optional(),
+  activities: z.array(programmeActivitySchema).max(200).optional(),
+});
+const programmeCreateSchema = z.object({
+  projectId: z.string().optional(),
+  name:      z.string().max(200).optional(),
+  startDate: z.coerce.date({ message: 'startDate is required' }),
+});
+const programmeUpdateSchema = z.object({
+  name:      z.string().max(200).optional(),
+  startDate: z.coerce.date().optional(),
+  phases:    z.array(programmePhaseSchema).max(50).optional(),
+});
+const weeklyReportSchema = z.object({
+  weekNumber:     z.coerce.number().int().min(0, 'weekNumber is required'),
+  weekEnding:     z.coerce.date().optional(),
+  overallPlanned: z.coerce.number().min(0).max(100).optional(),
+  overallActual:  z.coerce.number().min(0).max(100).optional(),
+  phaseProgress:  z.array(z.object({
+    phase:   z.string().max(200).optional(),
+    planned: z.coerce.number().optional(),
+    actual:  z.coerce.number().optional(),
+  })).max(50).optional(),
+  lookAhead:   z.string().max(2000).optional(),
+  issues:      z.string().max(2000).optional(),
+  signedOffBy: z.string().max(200).optional(),
+});
+
+// ── Expenses ─────────────────────────────────────────────────────────────────────
+
+const EXPENSE_CATEGORIES = [
+  'Labour', 'Materials', 'Equipment', 'Transport', 'Professional Fees',
+  'Permits & Licenses', 'Utilities', 'Office & Admin', 'Safety & PPE', 'Other',
+];
+const expenseSchema = z.object({
+  projectId:   z.string().optional(),
+  category:    z.enum(EXPENSE_CATEGORIES).optional(),
+  description: z.string().trim().min(1, 'Description is required').max(500),
+  amount:      z.coerce.number().min(0, 'Amount must be non-negative'),
+  currency:    z.string().max(10).optional(),
+  date:        z.coerce.date().optional(),
+  vendor:      z.string().max(200).optional(),
+  notes:       z.string().max(2000).optional(),
+});
+const expenseUpdateSchema = expenseSchema.partial();
+
+// ── Estimate calculation ──────────────────────────────────────────────────────
+
+const estimateCalculateSchema = z.object({
+  sizeM2:    z.coerce.number().positive('Size (m²) must be a positive number'),
+  condition: z.enum(['carcass', 'advanced_carcass', 'semi_finished', 'finished']),
+  tier:      z.enum(['basic', 'mid_range', 'premium']),
+});
 
 module.exports = {
   zodValidate,
@@ -92,7 +234,20 @@ module.exports = {
     forgotPassword: forgotPasswordSchema,
     resetPassword: resetPasswordSchema,
     estimate: estimateSchema,
+    estimateUpdate: estimateUpdateSchema,
     invoice: invoiceSchema,
     waitlist: waitlistSchema,
+    boqVersion: boqVersionSchema,
+    boqVersionUpdate: boqVersionUpdateSchema,
+    boqItem: boqItemSchema,
+    boqItemUpdate: boqItemUpdateSchema,
+    changeOrder: changeOrderSchema,
+    changeOrderUpdate: changeOrderUpdateSchema,
+    programmeCreate: programmeCreateSchema,
+    programmeUpdate: programmeUpdateSchema,
+    weeklyReport: weeklyReportSchema,
+    expense: expenseSchema,
+    expenseUpdate: expenseUpdateSchema,
+    estimateCalculate: estimateCalculateSchema,
   },
 };

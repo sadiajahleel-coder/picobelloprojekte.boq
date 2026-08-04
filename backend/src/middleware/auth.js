@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Company = require('../models/Company');
+const { SUPER_EMAILS, OWNER_EMAILS } = require('../config/superEmails');
 
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -37,4 +38,16 @@ const authorize = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, authorize };
+// Gates platform-owner-only routes (the owner dashboard, waitlist admin
+// view) at the route level instead of leaving the check buried inside the
+// controller, where a future route added to the same file could forget it.
+const requireEmailAllowlist = (emails) => (req, res, next) => {
+  if (!emails.includes(req.user?.email)) {
+    return res.status(403).json({ message: 'Not authorised.' });
+  }
+  next();
+};
+const requireSuperEmail = requireEmailAllowlist(SUPER_EMAILS);
+const requireOwnerEmail = requireEmailAllowlist(OWNER_EMAILS);
+
+module.exports = { authenticate, authorize, requireSuperEmail, requireOwnerEmail };

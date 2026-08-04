@@ -1,8 +1,9 @@
 const QsPrice = require('../models/QsPrice');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
-  if (req.query.category) filter.category = new RegExp(req.query.category, 'i');
+  if (req.query.category) filter.category = new RegExp(escapeRegex(req.query.category), 'i');
 
   const prices = await QsPrice.find(filter)
     .populate('createdBy', 'name')
@@ -17,9 +18,10 @@ const create = async (req, res) => {
 };
 
 const update = async (req, res) => {
+  const { companyId, ...updates } = req.body;
   const price = await QsPrice.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: Date.now() },
+    { ...updates, updatedAt: Date.now() },
     { new: true, runValidators: true }
   );
   if (!price) return res.status(404).json({ message: 'Price entry not found' });

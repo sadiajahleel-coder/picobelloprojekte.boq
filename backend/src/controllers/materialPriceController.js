@@ -1,9 +1,10 @@
 const MaterialPrice = require('../models/MaterialPrice');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
-  if (req.query.material) filter.material = new RegExp(req.query.material, 'i');
-  if (req.query.supplier) filter.supplier = new RegExp(req.query.supplier, 'i');
+  if (req.query.material) filter.material = new RegExp(escapeRegex(req.query.material), 'i');
+  if (req.query.supplier) filter.supplier = new RegExp(escapeRegex(req.query.supplier), 'i');
 
   const prices = await MaterialPrice.find(filter)
     .populate('createdBy', 'name')
@@ -18,9 +19,10 @@ const create = async (req, res) => {
 };
 
 const update = async (req, res) => {
+  const { companyId, ...updates } = req.body;
   const price = await MaterialPrice.findOneAndUpdate(
     { _id: req.params.id, companyId: req.user.companyId },
-    { ...req.body, updatedAt: Date.now() },
+    { ...updates, updatedAt: Date.now() },
     { new: true, runValidators: true }
   );
   if (!price) return res.status(404).json({ message: 'Material price not found' });
