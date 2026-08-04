@@ -2,6 +2,7 @@
   "name": "pico-bello-boq-backend",
   "version": "1.0.0",
   "description": "Pico Bello Projekte BOQ System — API Server",
+  "license": "UNLICENSED",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
