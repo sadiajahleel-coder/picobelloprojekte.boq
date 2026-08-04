@@ -763,6 +763,11 @@ S3_BUCKET_NAME=pico-bello-uploads
 **Effect:** First request after idle period is slow.
 **Fix:** Upgrade to Render Starter paid plan ($7/month) which keeps the service always running.
 
+### 5. `xlsx` (SheetJS) — Unpatched Advisories on the npm Build
+**Problem:** `frontend/package.json` pins `xlsx: ^0.18.5`. SheetJS has stated the npm-registry build is frozen at 0.18.5 and the fixes for known prototype-pollution (GHSA-4r6h-8v6p-xvw6) and ReDoS (GHSA-5pgg-2g8v-p4x9) advisories are only distributed from their own CDN (cdn.sheetjs.com), not npm. Confirmed still current: `npm view xlsx version` / the npm registry's `latest` dist-tag is still `0.18.5`.
+**Effect:** `frontend/src/components/ExcelImport.jsx` calls `XLSX.read()` on user-uploaded `.xlsx`/`.xls` files (BOQ/invoice/etc. bulk import). This runs entirely client-side in the importing user's browser — it doesn't expose the server or other users — but a malicious spreadsheet handed to a staff member (e.g. by a client) could still exploit these in that person's session.
+**Fix (not applied here — this session's outbound network couldn't reach cdn.sheetjs.com/docs.sheetjs.com to verify the current safe version/URL, and guessing one risks breaking `npm install` entirely):** Visit https://cdn.sheetjs.com/ yourself, get the current tarball URL for the latest release, and point `frontend/package.json`'s `xlsx` dependency at it (SheetJS's documented install method — a manual `"xlsx": "https://cdn.sheetjs.com/xlsx-<version>/xlsx-<version>.tgz"` line in `package.json`, not a plain semver range), then run `npm install` and re-test the import/export flows in `ExcelImport.jsx`/`MasterImport.jsx` before deploying. Alternative: migrate off `xlsx` entirely to a maintained library (e.g. `exceljs`) — bigger change, higher regression risk, but sidesteps the frozen-npm-build problem for good.
+
 ---
 
 ## 16. BUILD HISTORY — WHAT WAS DONE & WHEN
