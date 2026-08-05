@@ -1,5 +1,6 @@
 const Project = require('../models/Project');
 const { getAllowedProjectIds } = require('../utils/clientScope');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 const getProjects = async (req, res) => {
   const filter = { companyId: req.user.companyId };
@@ -10,7 +11,8 @@ const getProjects = async (req, res) => {
 
   const projects = await Project.find(filter)
     .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(LIST_SAFETY_CAP);
 
   res.json({ projects });
 };

@@ -6,6 +6,7 @@ const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope'
 const { checkRate } = require('../utils/rateAlerter');
 const { reviewBoq } = require('../utils/boqReviewer');
 const { draftBoqItems } = require('../utils/aiBoqDrafter');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 async function recalculateVersionTotal(versionId) {
   const items = await BoqItem.find({ versionId });
@@ -28,7 +29,8 @@ const getVersions = async (req, res) => {
   const versions = await BoqVersion.find(filter)
     .populate('projectId', 'name client')
     .populate('createdBy', 'name')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(LIST_SAFETY_CAP);
   res.json({ versions });
 };
 

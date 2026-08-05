@@ -5,6 +5,7 @@ const Estimate = require('../models/Estimate');
 const Project  = require('../models/Project');
 const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
 const { recalcTotals } = require('../utils/invoiceCalculations');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 const PDFDocument = require('pdfkit');
 
 // ── helpers ────────────────────────────────────────────────────────────────────────
@@ -31,7 +32,8 @@ exports.getInvoices = async (req, res) => {
   const invoices = await Invoice.find(filter)
     .populate('projectId', 'name')
     .populate('clientId',  'name email phone')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(LIST_SAFETY_CAP);
   res.json({ invoices });
 };
 

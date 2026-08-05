@@ -1,5 +1,6 @@
 const MaterialPrice = require('../models/MaterialPrice');
 const { escapeRegex } = require('../utils/escapeRegex');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
@@ -8,7 +9,8 @@ const getAll = async (req, res) => {
 
   const prices = await MaterialPrice.find(filter)
     .populate('createdBy', 'name')
-    .sort({ material: 1 });
+    .sort({ material: 1 })
+    .limit(LIST_SAFETY_CAP);
 
   res.json({ prices });
 };

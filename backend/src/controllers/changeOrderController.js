@@ -1,6 +1,7 @@
 const ChangeOrder = require('../models/ChangeOrder');
 const Notification = require('../models/Notification');
 const { getAllowedProjectIds, scopeToProjects } = require('../utils/clientScope');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 exports.getChangeOrders = async (req, res) => {
   const filter = { companyId: req.user.companyId };
@@ -15,7 +16,8 @@ exports.getChangeOrders = async (req, res) => {
     .populate('boqVersionId', 'name')
     .populate('requestedBy', 'name')
     .populate('approvedBy', 'name')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(LIST_SAFETY_CAP);
 
   res.json({ orders });
 };
