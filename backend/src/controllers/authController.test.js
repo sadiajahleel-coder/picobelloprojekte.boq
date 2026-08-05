@@ -1,7 +1,9 @@
 const { test, describe, mock, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const User = require('../models/User');
-const { completeCall } = require('./authController');
+const email = require('../utils/email');
+const whatsapp = require('../utils/whatsapp');
+const { completeCall, inviteMember } = require('./authController');
 
 const COMPANY_A = 'company-a';
 
@@ -52,5 +54,71 @@ describe('authController.completeCall', () => {
 
     const filterUsed = findOneAndUpdate.mock.calls[0].arguments[0];
     assert.equal(filterUsed.companyId, COMPANY_A);
+  });
+});
+
+describe('authController.inviteMember — Basic-tier team-member cap', () => {
+  let countDocuments, findOne, create, sendTeamInvite, sendWhatsApp;
+
+  afterEach(() => {
+    countDocuments?.mock.restore();
+    findOne?.mock.restore();
+    create?.mock.restore();
+    sendTeamInvite?.mock.restore();
+    sendWhatsApp?.mock.restore();
+  });
+
+  test('blocks a 6th invite on the Basic plan with 403, never touches User.findOne/create', async () => {
+    countDocuments = mock.method(User, 'countDocuments', () => Promise.resolve(5));
+    findOne = mock.method(User, 'findOne', () => Promise.resolve(null));
+    create = mock.method(User, 'create', () => Promise.resolve({ _id: 'new-user' }));
+
+    const req = fakeReq({
+      user: { _id: 'admin1', companyId: COMPANY_A, plan: 'basic' },
+      body: { name: 'New Hire', email: 'new@example.com', role: 'qs' },
+    });
+    const res = fakeRes();
+    await inviteMember(req, res);
+
+    assert.equal(res.statusCode, 403);
+    assert.equal(findOne.mock.calls.length, 0);
+    assert.equal(create.mock.calls.length, 0);
+    assert.equal(countDocuments.mock.calls[0].arguments[0].companyId, COMPANY_A);
+  });
+
+  test('allows the invite when the Basic-plan company is under the cap', async () => {
+    countDocuments = mock.method(User, 'countDocuments', () => Promise.resolve(4));
+    findOne = mock.method(User, 'findOne', () => Promise.resolve(null));
+    create = mock.method(User, 'create', () => Promise.resolve({ _id: 'new-user', name: 'New Hire' }));
+    sendTeamInvite = mock.method(email, 'sendTeamInvite', () => Promise.resolve());
+    sendWhatsApp = mock.method(whatsapp, 'sendWhatsApp', () => Promise.resolve());
+
+    const req = fakeReq({
+      user: { _id: 'admin1', companyId: COMPANY_A, plan: 'basic' },
+      body: { name: 'New Hire', email: 'new@example.com', role: 'qs' },
+    });
+    const res = fakeRes();
+    await inviteMember(req, res);
+
+    assert.equal(res.statusCode, 201);
+    assert.equal(create.mock.calls.length, 1);
+  });
+
+  test('never checks the cap for a non-Basic plan, even with 5+ existing members', async () => {
+    countDocuments = mock.method(User, 'countDocuments', () => Promise.resolve(50));
+    findOne = mock.method(User, 'findOne', () => Promise.resolve(null));
+    create = mock.method(User, 'create', () => Promise.resolve({ _id: 'new-user', name: 'New Hire' }));
+    sendTeamInvite = mock.method(email, 'sendTeamInvite', () => Promise.resolve());
+    sendWhatsApp = mock.method(whatsapp, 'sendWhatsApp', () => Promise.resolve());
+
+    const req = fakeReq({
+      user: { _id: 'admin1', companyId: COMPANY_A, plan: 'premium' },
+      body: { name: 'New Hire', email: 'new@example.com', role: 'qs' },
+    });
+    const res = fakeRes();
+    await inviteMember(req, res);
+
+    assert.equal(countDocuments.mock.calls.length, 0);
+    assert.equal(res.statusCode, 201);
   });
 });

@@ -12,6 +12,7 @@ const { validateImageBuffer, uploadImageToS3, deleteImageFromS3 } = require('../
 const { S3_CONFIGURED } = require('../config/s3');
 const { sendWhatsApp } = require('../utils/whatsapp');
 const { SUPER_EMAILS } = require('../config/superEmails');
+const { BASIC_TEAM_MEMBER_LIMIT } = require('../config/limits');
 const logger = require('../utils/logger');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -177,6 +178,19 @@ const inviteMember = async (req, res) => {
   if (!role || !role.trim()) {
     return res.status(400).json({ message: 'Role is required.' });
   }
+
+  // Basic-tier team-member cap -- previously enforced only in the frontend
+  // (PlanGate.jsx advertises "Up to 5 team members"), so a direct API call
+  // could add unlimited members regardless of plan.
+  if (req.user.plan === 'basic') {
+    const memberCount = await User.countDocuments({ companyId: req.user.companyId, isActive: true });
+    if (memberCount >= BASIC_TEAM_MEMBER_LIMIT) {
+      return res.status(403).json({
+        message: `Your plan is limited to ${BASIC_TEAM_MEMBER_LIMIT} team members. Upgrade to Premium for unlimited team members.`,
+      });
+    }
+  }
+
   const existing = await User.findOne({ email });
   if (existing) return res.status(409).json({ message: 'Email already registered' });
 

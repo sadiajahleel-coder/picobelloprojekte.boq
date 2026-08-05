@@ -1,5 +1,6 @@
 const QsPrice = require('../models/QsPrice');
 const { escapeRegex } = require('../utils/escapeRegex');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
@@ -7,7 +8,8 @@ const getAll = async (req, res) => {
 
   const prices = await QsPrice.find(filter)
     .populate('createdBy', 'name')
-    .sort({ category: 1, item: 1 });
+    .sort({ category: 1, item: 1 })
+    .limit(LIST_SAFETY_CAP);
 
   res.json({ prices });
 };

@@ -1,5 +1,6 @@
 const HistoricalProject = require('../models/HistoricalProject');
 const { cloudinary, upload } = require('../config/cloudinary');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 exports.uploadDocument = [
   upload.single('file'),
@@ -30,6 +31,7 @@ exports.list = async (req, res, next) => {
     const projects = await HistoricalProject
       .find({ companyId: req.user.companyId })
       .sort({ completedYear: -1, createdAt: -1 })
+      .limit(LIST_SAFETY_CAP)
       .lean();
     res.json({ projects });
   } catch (err) { next(err); }
