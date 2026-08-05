@@ -1,5 +1,6 @@
 const ArtisanPrice = require('../models/ArtisanPrice');
 const { escapeRegex } = require('../utils/escapeRegex');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 const getAll = async (req, res) => {
   const filter = { companyId: req.user.companyId };
@@ -7,7 +8,8 @@ const getAll = async (req, res) => {
 
   const prices = await ArtisanPrice.find(filter)
     .populate('createdBy', 'name')
-    .sort({ service: 1 });
+    .sort({ service: 1 })
+    .limit(LIST_SAFETY_CAP);
 
   res.json({ prices });
 };

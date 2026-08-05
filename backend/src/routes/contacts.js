@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
 const Contact = require('../models/Contact');
 const { escapeRegex } = require('../utils/escapeRegex');
+const { LIST_SAFETY_CAP } = require('../config/limits');
 
 router.use(authenticate);
 
@@ -21,7 +22,8 @@ router.get('/', async (req, res) => {
   }
   const contacts = await Contact.find(filter)
     .populate('projectIds', 'name')
-    .sort({ name: 1 });
+    .sort({ name: 1 })
+    .limit(LIST_SAFETY_CAP);
   res.json({ contacts });
 });
 
