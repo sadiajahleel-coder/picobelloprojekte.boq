@@ -7,6 +7,14 @@
 //
 // Usage: MONGODB_URI=... node scripts/backfillApprovalCompanyId.js
 require('dotenv').config();
+
+// Some networks/ISPs/routers fail or block the DNS SRV lookup that
+// mongodb+srv:// connection strings require (querySrv ECONNREFUSED), even
+// though plain DNS works fine otherwise. Forcing Node to use a public DNS
+// resolver for this script's own process sidesteps that without requiring
+// any OS-level network configuration changes.
+require('dns').setServers(['8.8.8.8', '8.8.4.4']);
+
 const mongoose = require('mongoose');
 const Approval = require('../src/models/Approval');
 const BoqVersion = require('../src/models/BoqVersion');
