@@ -2,6 +2,20 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Company = require('../models/Company');
 const { SUPER_EMAILS, OWNER_EMAILS } = require('../config/superEmails');
+const { TRIAL_DAYS, TRIAL_EXEMPT_EMAIL } = require('../config/limits');
+
+// Routes (relative to wherever the auth router is mounted, e.g. /api/auth)
+// that must stay reachable even once a free trial has expired -- checking
+// your own status and deleting your account should never be locked behind
+// a paywall. Everything else on a 'free' plan past TRIAL_DAYS is blocked.
+const TRIAL_EXEMPT_AUTH_PATHS = new Set(['/me', '/me/book-call']);
+
+function isTrialExpired(user) {
+  if (user.plan !== 'free') return false;
+  if (user.email === TRIAL_EXEMPT_EMAIL) return false;
+  const trialEndsAt = new Date(user.createdAt).getTime() + TRIAL_DAYS * 24 * 3600 * 1000;
+  return Date.now() > trialEndsAt;
+}
 
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -22,6 +36,14 @@ const authenticate = async (req, res, next) => {
       const company = await Company.create({ companyName: 'My Company', createdBy: user._id });
       user.companyId = company._id;
       await user.save();
+    }
+
+    const isExemptAuthRoute = req.baseUrl.endsWith('/auth') && TRIAL_EXEMPT_AUTH_PATHS.has(req.path);
+    if (!isExemptAuthRoute && isTrialExpired(user)) {
+      return res.status(402).json({
+        message: 'Your 7-day free trial has ended. Upgrade your plan to continue.',
+        trialExpired: true,
+      });
     }
 
     req.user = user;
@@ -50,4 +72,4 @@ const requireEmailAllowlist = (emails) => (req, res, next) => {
 const requireSuperEmail = requireEmailAllowlist(SUPER_EMAILS);
 const requireOwnerEmail = requireEmailAllowlist(OWNER_EMAILS);
 
-module.exports = { authenticate, authorize, requireSuperEmail, requireOwnerEmail };
+module.exports = { authenticate, authorize, requireSuperEmail, requireOwnerEmail, isTrialExpired };

@@ -11,4 +11,10 @@ const LIST_SAFETY_CAP = 2000;
 // enforced in the frontend (PlanGate.jsx), never on the server.
 const BASIC_TEAM_MEMBER_LIMIT = 5;
 
-module.exports = { LIST_SAFETY_CAP, BASIC_TEAM_MEMBER_LIMIT };
+// Mirrors frontend/src/components/PlanGate.jsx's TRIAL_DAYS/DEV_EMAIL exactly
+// -- that's where this was previously (and only) enforced, client-side only.
+// Keep both in sync if either changes.
+const TRIAL_DAYS = 7;
+const TRIAL_EXEMPT_EMAIL = 'tidan1023@gmail.com';
+
+module.exports = { LIST_SAFETY_CAP, BASIC_TEAM_MEMBER_LIMIT, TRIAL_DAYS, TRIAL_EXEMPT_EMAIL };
